@@ -9,20 +9,24 @@
 import type { AtlasRepository } from './AtlasRepository'
 import type { MetricsRepository } from './MetricsRepository'
 import { LocalAtlasRepository } from './local/LocalAtlasRepository'
+import { SupabaseAtlasRepository } from './supabase/SupabaseAtlasRepository'
 import { MockMetricsRepository } from './mock/MockMetricsRepository'
 
-type Backend = 'local' | 'http'
+type Backend = 'local' | 'supabase' | 'http'
 
 const backend = (import.meta.env.VITE_ATLAS_BACKEND as Backend | undefined) ?? 'local'
 
 function createAtlasRepo(): AtlasRepository {
   switch (backend) {
+    case 'supabase':
+      // Throws at construction if the URL/key env vars are missing — a hard
+      // failure rather than a silent fallback to local, because "why aren't my
+      // changes shared?" is a much worse afternoon than "the env var is unset".
+      // Setup: supabase/SETUP.md.
+      return new SupabaseAtlasRepository()
     case 'http':
-      // Phase 3. Deliberately a hard failure rather than a silent fallback to
-      // local — "why aren't my changes shared?" is a much worse afternoon than
-      // "the env var points at something that doesn't exist yet".
       throw new Error(
-        'VITE_ATLAS_BACKEND=http is not implemented yet — HttpAtlasRepository lands with the backend phase',
+        'VITE_ATLAS_BACKEND=http is not implemented — use `supabase`, or `local` (default)',
       )
     case 'local':
     default:

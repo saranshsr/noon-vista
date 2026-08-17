@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { InfiniteCanvas, AtlasBoards, AtlasShell, Minimap, boardsBounds, frameBox, GRID_UNIT } from '../canvas'
+import { InfiniteCanvas, AtlasBoards, AtlasShell, Minimap, boardsBounds, frameBox, resolveOverlap, GRID_UNIT } from '../canvas'
 import type { CanvasApi, FlowWeight } from '../canvas'
 import {
   TopNav,
@@ -942,7 +942,33 @@ export default function Dashboard() {
             selectedIds={selectedIds}
             onSelectionChange={changeSelection}
             onGroupDrag={(delta) => actions.dragGroup([...selectedIds], delta)}
-            onGroupDragEnd={() => actions.commitGroup([...selectedIds])}
+            onGroupDragEnd={() => {
+              // A group settles like a single card: never overlapping anything outside
+              // it. The set is pushed by ONE shared delta so the arrangement the user
+              // made stays rigid — members can't be folded onto each other by a nudge
+              // they all receive equally.
+              const ids = [...selectedIds]
+              const d = snapshot
+                ? resolveOverlap(
+                    snapshot.screens
+                      .filter((s) => selectedIds.has(s.id))
+                      .map((s) => s.position),
+                    snapshot.screens
+                      .filter((s) => !selectedIds.has(s.id))
+                      .map((s) => s.position),
+                    toggles.snap ? GRID_UNIT : 0,
+                  )
+                : { x: 0, y: 0 }
+              if (d.x !== 0 || d.y !== 0) {
+                // Through nudgeSelection, NOT dragGroup+commitGroup: an immediate
+                // commit would read the reducer's pre-nudge positions (state hasn't
+                // flushed within this tick). The nudge's trailing debounce commits
+                // after state settles, and coalesces drag + nudge into one undo entry.
+                actions.nudgeSelection(ids, d)
+              } else {
+                actions.commitGroup(ids)
+              }
+            }}
             flowWeights={flowWeights}
             selectedFlowId={selectedFlowId}
             onSelectFlow={selectFlow}

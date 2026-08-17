@@ -326,6 +326,95 @@ body {
   overflow-x: hidden;
 }
 
+/* ── Zoom HUD (Gallery only — the Dashboard passes showControls={false} and uses the bottom-right ZoomBar instead) ─────────────────────────────────────────────────────────────── */
+/* Rebuilt in the house glass language (the previous generic grey chrome is why it
+   was switched off), pinned bottom-centre to mirror the mode switch top-centre. */
+.atlas-hud {
+  position: absolute;
+  bottom: 20px;
+  /* Transform-free centring — see .dashboard__switch. This element carries the blur
+     itself, so a translate here would have disabled its own backdrop-filter. */
+  inset-inline: 0;
+  width: fit-content;
+  margin-inline: auto;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--panel-solid);
+  border: 1px solid var(--hairline-2);
+  border-radius: var(--radius-md);
+}
+
+.atlas-hud__btn,
+.atlas-hud__value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: "Geist Pixel", sans-serif;
+  font-variation-settings: "ELSH" 0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-hover) var(--ease-out),
+    color var(--dur-hover) var(--ease-out);
+}
+
+.atlas-hud__btn {
+  width: 28px;
+  padding: 0;
+}
+
+.atlas-hud__value {
+  min-width: 52px;
+  /* Tabular so the reading doesn't shift the buttons as digits change width. */
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+
+.atlas-hud__glyph {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.atlas-hud__btn:hover,
+.atlas-hud__value:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.atlas-hud__btn:focus-visible,
+.atlas-hud__value:focus-visible {
+  outline: 1px solid var(--noon-pink);
+  outline-offset: -1px;
+}
+
+.atlas-hud__divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--hairline-3);
+}
+
+/* A card gliding to its de-overlapped resting spot after release. The class exists
+   only for the ~400ms of the settle (see `markSettling`), so live drags — which write
+   left/top at 60fps through the same element — stay 1:1 with the pointer. left/top
+   rather than transform: a board's transform is composed from tilt/hover custom
+   properties, and the section must never establish a backdrop root anyway. */
+.atlas-section.is-settling {
+  transition:
+    left 400ms cubic-bezier(0.22, 1, 0.36, 1),
+    top 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Breadcrumb trail, bottom-left (frame x:20). */
 .dashboard__breadcrumbs {
   position: absolute;
@@ -1184,84 +1273,6 @@ body {
 /* Direction of travel is carried by the travelling pulse in AtlasConnectors, not by
    a dashed stroke. Dashes read as "this line is styled differently" rather than
    "traffic moves this way" — the motion was perpendicular to the meaning. */
-
-/* ── Zoom HUD ─────────────────────────────────────────────────────────────── */
-/* Rebuilt in the house glass language (the previous generic grey chrome is why it
-   was switched off), pinned bottom-centre to mirror the mode switch top-centre. */
-.atlas-hud {
-  position: absolute;
-  bottom: 20px;
-  /* Transform-free centring — see .dashboard__switch. This element carries the blur
-     itself, so a translate here would have disabled its own backdrop-filter. */
-  inset-inline: 0;
-  width: fit-content;
-  margin-inline: auto;
-  z-index: 40;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  background: var(--panel-solid);
-  border: 1px solid var(--hairline-2);
-  border-radius: var(--radius-md);
-}
-
-.atlas-hud__btn,
-.atlas-hud__value {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-2);
-  font-family: "Geist Pixel", sans-serif;
-  font-variation-settings: "ELSH" 0;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color var(--dur-hover) var(--ease-out),
-    color var(--dur-hover) var(--ease-out);
-}
-
-.atlas-hud__btn {
-  width: 28px;
-  padding: 0;
-}
-
-.atlas-hud__value {
-  min-width: 52px;
-  /* Tabular so the reading doesn't shift the buttons as digits change width. */
-  font-variant-numeric: tabular-nums;
-  color: var(--text-1);
-}
-
-.atlas-hud__glyph {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.atlas-hud__btn:hover,
-.atlas-hud__value:hover {
-  background: var(--surface-3);
-  color: var(--text-1);
-}
-
-.atlas-hud__btn:focus-visible,
-.atlas-hud__value:focus-visible {
-  outline: 1px solid var(--noon-pink);
-  outline-offset: -1px;
-}
-
-.atlas-hud__divider {
-  width: 1px;
-  height: 18px;
-  margin: 0 2px;
-  background: var(--hairline-3);
-}
 
 /* ── Top bar right cluster ────────────────────────────────────────────────── */
 .dashboard__topbar-right {
@@ -2700,13 +2711,13 @@ kbd {
    ══════════════════════════════════════════════════════════════════════════════ */
 .dashboard__minimap {
   position: absolute;
-  /* Was 66px — stacked above the old bottom-centre command bar. The bar is gone
-     (zoom lives bottom-right now), so the minimap takes the bottom row itself. */
-  bottom: 20px;
-  /* Transform-free centring — see .dashboard__switch. */
-  inset-inline: 0;
-  width: fit-content;
-  margin-inline: auto;
+  /* Bottom-left, stacked above the breadcrumbs pill (bottom 20 + ~30 tall + 12 gap).
+     It sat bottom-centre before, where it collided with the destructive-edit toast —
+     both were anchored above a command bar that no longer exists. The corner also
+     matches what a minimap is: a fixed reference, not a transient message. The open
+     Sidenav covers this corner; that's accepted — it's a passing overlay. */
+  left: 20px;
+  bottom: 64px;
 }
 
 .minimap {

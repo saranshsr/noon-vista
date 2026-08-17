@@ -7,6 +7,7 @@ export { AtlasConnectors } from './AtlasConnectors'
 export type { FlowWeight } from './AtlasConnectors'
 export {
   CARD_W,
+  CARD_H,
   CONNECTOR_COLOR,
   FRAME_H,
   GAP,
@@ -14,6 +15,7 @@ export {
   boardsBounds,
   connectorPath,
   frameBox,
+  resolveOverlap,
 } from './boardGeometry'
 export { useCanvas, useCanvasScale } from './CanvasContext'
 export type { CanvasApi } from './CanvasContext'

@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { CanvasSection } from './CanvasSection'
 import { useCanvas } from './CanvasContext'
 import { Artboard } from '../components'
-import { CARD_W, FRAME_H, GAP, LABEL_H, connectorPath, frameBox, resolveAlign } from './boardGeometry'
+import { CARD_W, FRAME_H, GAP, LABEL_H, connectorPath, frameBox, resolveAlign, resolveOverlap } from './boardGeometry'
 import type { AlignGuide } from './boardGeometry'
 import { GRID_UNIT } from './crossGrid'
 import { gridField } from './gridField'
@@ -153,6 +153,30 @@ export function AtlasBoards({
   }, [screens])
   /** Live alignment guides while a single board drags. Cleared on drag end. */
   const [guides, setGuides] = useState<AlignGuide[]>([])
+
+  /**
+   * Boards gliding to their de-overlapped resting spot. The class this drives is what
+   * turns the post-release nudge from a teleport into a slide; it must be gone again
+   * quickly, or the next live drag would fight a lingering transition.
+   */
+  const [settlingIds, setSettlingIds] = useState<ReadonlySet<ScreenId>>(new Set())
+  const settleTimers = useRef(new Map<ScreenId, number>())
+  const markSettling = (id: ScreenId) => {
+    setSettlingIds((prev) => new Set(prev).add(id))
+    const timers = settleTimers.current
+    window.clearTimeout(timers.get(id))
+    timers.set(
+      id,
+      window.setTimeout(() => {
+        setSettlingIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+        timers.delete(id)
+      }, 450),
+    )
+  }
   /**
    * Live rubber-band gesture — draw OR reconnect.
    *
@@ -505,6 +529,7 @@ export function AtlasBoards({
           onGroupDragEnd={onGroupDragEnd}
           onDragStart={onScreenDragStart}
           onDrag={dragWithGuides}
+          settling={settlingIds.has(screen.id)}
           onDragEnd={(sid, p) => {
             // Commit the *snapped* position, or the board would jump back to the raw drop
             // point on release — the guide would have been a lie.
@@ -513,8 +538,26 @@ export function AtlasBoards({
               screens.filter((s) => s.id !== sid),
               6 / getScale(),
             )
+            // Cards may pass over each other mid-gesture but never settle overlapping:
+            // the smallest de-overlapping nudge is applied here, at the same commit
+            // point that already owns align-snapping — so both the placed and the
+            // thrown release paths (flight onRest also exits through this callback)
+            // resolve identically, and undo restores the pre-drag spot either way.
+            const others = screens
+              .filter((s) => s.id !== sid)
+              .map((s) => s.position)
+            const d = resolveOverlap([position], others, snapToGrid ? GRID_UNIT : 0)
+            const settled = { x: position.x + d.x, y: position.y + d.y }
+            if (d.x !== 0 || d.y !== 0) {
+              markSettling(sid)
+              // Stream the settled position through the live-move channel too:
+              // `commitScreenPosition` persists exactly what it's handed, but it does
+              // NOT dispatch it locally — it trusts the drag stream to have put it in
+              // state already. True for a raw release; not for a nudged one.
+              onScreenDrag(sid, settled)
+            }
             setGuides([])
-            onScreenDragEnd(sid, position)
+            onScreenDragEnd(sid, settled)
           }}
         />
       ))}
@@ -582,6 +625,8 @@ type DraggableBoardProps = {
   onDragStart?: (id: ScreenId) => void
   onDrag: (id: ScreenId, next: Vec) => void
   onDragEnd: (id: ScreenId, position: Vec) => void
+  /** Gliding to a de-overlapped resting spot — drives the settle transition. */
+  settling?: boolean
 }
 
 /**
@@ -612,6 +657,7 @@ const DraggableBoard = memo(function DraggableBoard({
   onDragStart,
   onDrag,
   onDragEnd,
+  settling = false,
 }: DraggableBoardProps) {
   const { getScale, screenToWorld } = useCanvas()
   const reducedMotion = useReducedMotion()
@@ -862,7 +908,7 @@ const DraggableBoard = memo(function DraggableBoard({
   }
 
   return (
-    <CanvasSection x={pos.x} y={pos.y} width={CARD_W}>
+    <CanvasSection x={pos.x} y={pos.y} width={CARD_W} className={settling ? 'is-settling' : undefined}>
       <div
         ref={boardRef}
         className={`atlas-board${dragging ? ' is-dragging' : ''}${flying ? ' is-flying' : ''}${dimmed ? ' is-dimmed' : ''}${draggable ? '' : ' is-pan-mode'}${selected ? ' is-selected' : ''}${drawFlowMode ? ' is-flow-mode' : ''}${isFlowSource ? ' is-flow-source' : ''}${isFlowTarget ? ' is-flow-target' : ''}`}

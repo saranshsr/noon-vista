@@ -347,3 +347,78 @@ export function boardsBounds(positions: Vec[]): Box | null {
   }
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
 }
+
+/** Full card height: label line, gap, then the phone frame. */
+export const CARD_H = LABEL_H + GAP + FRAME_H
+
+/** Clearance kept between settled cards, in world px. Cards never touch, let alone stack. */
+const SETTLE_GAP = 16
+
+/**
+ * Where a released card (or rigid group of cards) may actually come to rest.
+ *
+ * Cards are allowed to pass OVER each other freely mid-gesture — blocking during the
+ * drag would fight the throw physics and make group drags unpredictable — but they are
+ * never allowed to SETTLE overlapping. On release, this computes the smallest nudge
+ * that separates the moving card(s) from everything static, and the caller commits the
+ * nudged position instead of the raw one.
+ *
+ * Mechanics: iterative minimum-translation. Each pass finds the deepest remaining
+ * overlap (by area) between a moving card and a static one, and pushes the whole
+ * moving set along the shallower axis of that pair — whichever direction moves the
+ * centres apart. Pushing the *set* by one shared delta is what keeps a multi-selected
+ * arrangement rigid; members were separated before the drag, and one shared delta
+ * can't fold them onto each other. The loop re-checks after every push because a
+ * nudge can create a new overlap with a neighbour; 24 passes is far beyond what a
+ * dense wall of cards needs to open a slot.
+ *
+ * `quantum` (the grid pitch, when snap is on) rounds every push UP to a grid multiple,
+ * so a resolved card still sits on the lattice the user asked for. Rounding up rather
+ * than to-nearest, because rounding a push down can leave the overlap it was meant to
+ * clear.
+ *
+ * Returns the DELTA to add to every moving position — {0,0} means the release was
+ * already clean.
+ */
+export function resolveOverlap(moving: Vec[], statics: Vec[], quantum = 0): Vec {
+  const g = SETTLE_GAP
+  let dx = 0
+  let dy = 0
+
+  const roundUp = (v: number) =>
+    quantum > 0 ? Math.sign(v) * Math.ceil(Math.abs(v) / quantum) * quantum : v
+
+  for (let pass = 0; pass < 24; pass++) {
+    let bestArea = 0
+    let push: Vec | null = null
+
+    for (const m of moving) {
+      const mx = m.x + dx
+      const my = m.y + dy
+      for (const s of statics) {
+        // Overlap of the two cards, with the static one grown by the clearance gap.
+        const ox = Math.min(mx + CARD_W, s.x + CARD_W + g) - Math.max(mx, s.x - g)
+        const oy = Math.min(my + CARD_H, s.y + CARD_H + g) - Math.max(my, s.y - g)
+        if (ox <= 0 || oy <= 0) continue
+        const area = ox * oy
+        if (area <= bestArea) continue
+        bestArea = area
+        // Push along the shallower axis, away from the static card's centre. Dead
+        // centre (a card dropped exactly on top) breaks the tie rightward/downward.
+        if (ox <= oy) {
+          const dir = mx + CARD_W / 2 >= s.x + CARD_W / 2 ? 1 : -1
+          push = { x: roundUp(dir * ox), y: 0 }
+        } else {
+          const dir = my + CARD_H / 2 >= s.y + CARD_H / 2 ? 1 : -1
+          push = { x: 0, y: roundUp(dir * oy) }
+        }
+      }
+    }
+
+    if (!push) break
+    dx += push.x
+    dy += push.y
+  }
+
+  return { x: dx, y: dy }
+}

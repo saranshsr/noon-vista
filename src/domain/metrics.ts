@@ -27,9 +27,11 @@ export function scopeKey(scope: MetricScope): string {
 /**
  * How a raw number is rendered. The set is driven by what the current design
  * actually displays — `int` is deliberately ungrouped (the "Users per day" reel
- * shows `583097`, not `583,097`) while `intGrouped` is separated.
+ * shows `583097`, not `583,097`) while `intGrouped` is separated. `duration`
+ * carries seconds and renders as `1m 36s` — added for the PDP's median-time
+ * metric, where `96.00` would read as a count of something.
  */
-export type MetricFormat = 'int' | 'intGrouped' | 'fixed2' | 'pct1' | 'pct2'
+export type MetricFormat = 'int' | 'intGrouped' | 'fixed2' | 'pct1' | 'pct2' | 'duration'
 
 export interface Metric {
   /** Warehouse column name — the join key to a real backend. */
@@ -91,6 +93,14 @@ export function formatMetric(m: Metric): string {
       return `${m.value.toFixed(1)}%`
     case 'pct2':
       return `${m.value.toFixed(2)}%`
+    case 'duration': {
+      // Seconds in, `1m 36s` out. Sub-minute values drop the minute part rather
+      // than printing `0m 42s`.
+      const total = Math.round(m.value)
+      const mins = Math.floor(total / 60)
+      const secs = total % 60
+      return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    }
   }
 }
 

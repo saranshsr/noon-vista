@@ -50,6 +50,19 @@ const DEFINITIONS: Record<string, string> = {
   flow_users: 'Users who traversed this connector at least once per day.',
   flow_share: 'Share of the source screen’s users who took this path.',
   flow_drop_off: 'Users who left the journey at the source rather than continuing.',
+  pdp_total_views: 'Total PDP renders in the window, including repeat views.',
+  pdp_unique_views: 'Distinct users who viewed the PDP at least once.',
+  atc_per_view: 'Add-to-cart taps divided by total PDP views.',
+  buy_now_per_view: 'Buy-now taps divided by total PDP views.',
+  pdp_scroll_depth_median: 'Median share of the page a viewer scrolled through.',
+  pdp_time_spent_median:
+    'Median dwell time on the PDP. Derivable only once the flow reaches cart/checkout.',
+  pdp_conversion_rate:
+    'Orders divided by unique PDP viewers. Derivable only once the flow reaches cart/checkout.',
+  gmv_per_pdp_visitor:
+    'GMV attributed per unique PDP visitor, in AED. Derivable only once the flow reaches cart/checkout.',
+  oos_rate:
+    'Share of PDP views that landed on an out-of-stock offer. Needs stock data joined to the flow.',
 }
 
 function metric(
@@ -63,10 +76,56 @@ function metric(
 }
 
 /**
+ * The PDP's own stat set — the screen answers product questions, not surface
+ * questions, so the generic page metrics would be the wrong rows entirely.
+ *
+ * Ordering is by importance as specified: the first five (total views, unique
+ * views, ATC/views, buy-now/views, scroll depth) are directly measurable from
+ * PDP instrumentation alone. The last four are *funnel-derived* — they only
+ * become computable once the flow continues to cart and checkout — so their
+ * definitions say so, and like everything in this repository they are synthetic
+ * until a real warehouse is wired in.
+ *
+ * Internal consistency the eye checks first: unique ≤ total, buy-now ≤ ATC,
+ * conversion ≤ ATC. Random independent draws break those invariants about once
+ * in three seeds, and one impossible pair discredits the whole card.
+ */
+function pdpScreenMetrics(screenId: string, range: TimeRange): MetricSet {
+  const rnd = seeded(seedFor(screenId, range))
+  const rand = (min: number, max: number) => rnd() * (max - min) + min
+  const totalViews = rand(150_000, 900_000)
+  const uniqueViews = totalViews * rand(0.55, 0.8)
+  const atcRate = rand(2, 12)
+  const buyNowRate = atcRate * rand(0.15, 0.45)
+  const conversion = atcRate * rand(0.2, 0.5)
+  return {
+    scope: { kind: 'screen', screenId },
+    primary: [
+      metric('pdp_total_views', 'PDP total views', totalViews, 'int'),
+      metric('pdp_unique_views', 'PDP unique views', uniqueViews, 'int'),
+    ],
+    secondary: [
+      metric('atc_per_view', 'ATC / Total views', atcRate, 'pct2'),
+      metric('buy_now_per_view', 'Buy now / Total views', buyNowRate, 'pct2'),
+      metric('pdp_scroll_depth_median', 'Median scroll depth', rand(25, 75), 'pct1'),
+      metric('pdp_time_spent_median', 'Median time on PDP', rand(20, 180), 'duration'),
+      metric('pdp_conversion_rate', 'PDP conversion rate', conversion, 'pct2'),
+      metric('gmv_per_pdp_visitor', 'GMV / PDP visitor', rand(5, 80), 'fixed2'),
+      metric('oos_rate', 'OOS stock rate', rand(1, 15), 'pct1'),
+    ],
+    asOf: ASOF[range],
+    mocked: true,
+  }
+}
+
+/**
  * Page-level stats for a screen. The RNG call order below is load-bearing:
- * changing it changes every number in the app.
+ * changing it changes every number in the app. The PDP branches out *before*
+ * this generator runs, so the seventeen original screens keep their exact
+ * pre-refactor numbers.
  */
 function screenMetrics(screenId: string, range: TimeRange): MetricSet {
+  if (screenId === 'pdp') return pdpScreenMetrics(screenId, range)
   const rnd = seeded(seedFor(screenId, range))
   const rand = (min: number, max: number) => rnd() * (max - min) + min
   return {

@@ -1,6 +1,8 @@
 /**
  * The seeded noon Atlas — the 17 screens and 18 flows that were previously
- * hardcoded inside `AtlasBoards.tsx`, now the seed layer of the data layer.
+ * hardcoded inside `AtlasBoards.tsx`, now the seed layer of the data layer —
+ * plus the New PDP (screen 18, flow 19), mapped widget-for-widget from Figma
+ * node 1447:13037.
  *
  * ⚠️  COORDINATE FIDELITY: these x/y values are the exact Figma world coordinates
  * from the "Dummy flows" section (node 71:104076). `2237.67` and `2238` on the
@@ -50,9 +52,13 @@ const screenImage = (id: string) => `/images/screens/${id}.jpg`
 
 type SeedScreen = { id: string; label: string; x: number; y: number }
 
-// The 17 screens, at their exact Figma positions within the flows section.
+// The 18 screens — 17 at their exact Figma positions within the flows section, plus the
+// New PDP (node 1447:13037 in the Saransh-s file), which has no position in the "Dummy
+// flows" section, so it takes the free slot one home-row pitch (600) left of the
+// homepage it hangs off.
 const SEED_SCREENS: SeedScreen[] = [
   { id: 'home', label: 'Homepage', x: 1583, y: 877 },
+  { id: 'pdp', label: 'New PDP', x: 983, y: 877 },
   { id: 'supermall', label: 'Supermall', x: 1327, y: 100 },
   { id: 'noon-food', label: 'noon Food', x: 1583, y: 100 },
   { id: 'noon-minutes', label: 'noon Minutes', x: 1839, y: 100 },
@@ -85,6 +91,7 @@ const SEED_SCREENS: SeedScreen[] = [
  * unlabelled. Better a sparse graph of true labels than a complete one of guesses.
  */
 const SEED_FLOWS: { from: string; to: string; action?: string }[] = [
+  { from: 'home', to: 'pdp', action: 'Product card' },
   { from: 'home', to: 'supermall', action: 'supermall tile' },
   { from: 'home', to: 'noon-food', action: 'noon FOOD tile' },
   { from: 'home', to: 'noon-minutes', action: '12 MINUTES tile' },
@@ -165,6 +172,50 @@ const SEED_HOME_SECTIONS: { name: string; weight: number }[] = [
   { name: 'New Launches', weight: 10 },
 ]
 
+/**
+ * The New PDP's sections — one per widget, named EXACTLY as the layers are named in
+ * Figma (node 1447:13037, frame 375×6770). Verbatim means verbatim: the stray trailing
+ * quote on `Offers for you"`, the trailing space on `Top products in chargers `, and the
+ * unnamed `Frame 2147238764` (the free-gifts strip) are all in the design file. Renaming
+ * them here would hide that from the person who can actually fix it — the file's owner.
+ *
+ * `top` is each widget's absolute y in the frame (children of the y=560 content wrapper
+ * are offset by +560), at full Figma precision per the coordinate-fidelity rule above.
+ * A section extends to the next widget's top — inter-widget padding belongs to the
+ * widget above, which is how the padding reads visually. The Header overlaps the Image
+ * node (y=40) as a floating bar; a linear strip can't express overlap, so the Image
+ * section begins where the Header's own box ends (y=103). The floating `Pill Button`
+ * (y=6621, 106×32) is skipped for the same reason. Weights are the raw pixel heights —
+ * MasterImage consumes them as flex ratios, so pixels preserve the exact proportions
+ * with no rounding step.
+ */
+const PDP_FRAME_H = 6770
+
+const SEED_PDP_WIDGETS: { name: string; top: number }[] = [
+  { name: 'Header', top: 0 },
+  { name: 'Image', top: 103 },
+  { name: 'Main-Info', top: 560 },
+  { name: 'In this combo', top: 934 },
+  { name: 'Ads', top: 1079.1943359375 },
+  { name: 'Delivery information', top: 1169.1944580078125 },
+  { name: 'Frame 2147238764', top: 1485.1306762695312 },
+  { name: 'Variant picker', top: 1632.130615234375 },
+  { name: 'Offers for you"', top: 1995.130615234375 },
+  { name: 'Trustmarker', top: 2126.130859375 },
+  { name: 'Product Overview', top: 2242.130615234375 },
+  { name: 'Trustmarker', top: 2463.130615234375 },
+  { name: 'Bestseller', top: 2676.130615234375 },
+  { name: 'Seller widget', top: 2750.130615234375 },
+  { name: 'Product features', top: 3042.130615234375 },
+  { name: 'Variant Selection', top: 3664.130615234375 },
+  { name: 'Details', top: 3839.130615234375 },
+  { name: 'Variant Selection', top: 4129.130615234375 },
+  { name: 'Product Review Card', top: 4471.130615234375 },
+  { name: 'Similar products', top: 5897.130859375 },
+  { name: 'Top products in chargers ', top: 6280.79736328125 },
+  { name: 'Bottom Nav', top: 6665 },
+]
+
 const slug = (s: string) =>
   s
     .toLowerCase()
@@ -218,17 +269,29 @@ export function findSeedProject(idOrSlug: string): Project | undefined {
 export function buildSeededAtlas(): AtlasSnapshot {
   const projectId = SEEDED_PROJECT_ID
 
+  // Screens with a full-length scrollable mockup. Everything else previews its artboard.
+  const previews: Record<string, string> = {
+    home: '/images/homepage.jpg',
+    pdp: '/images/pdp.jpg',
+  }
+
+  // The PDP's Figma frame is 375 wide, not 400, so its board crop is 375×812 — same
+  // 200:433.33 frame aspect as every other board, at the asset's native width. The
+  // device reports the crop, exactly as `home` reports its 400×865 crop rather than
+  // the 430×7800 full page.
+  const devices: Record<string, Device> = {
+    pdp: { name: 'Artboard', width: 375, height: 812 },
+  }
+
   const screens: Screen[] = SEED_SCREENS.map((s, order) => ({
     id: s.id,
     projectId,
     label: s.label,
     imageUrl: screenImage(s.id),
-    // Only the homepage has a full-length scrollable mockup. Modelling it as data
-    // retires the `focusedId === 'home' ? …` special case in the Dashboard.
-    previewUrl: s.id === 'home' ? '/images/homepage.jpg' : undefined,
+    previewUrl: previews[s.id],
     position: { x: s.x, y: s.y },
     homePosition: { x: s.x, y: s.y },
-    device: ARTBOARD,
+    device: devices[s.id] ?? ARTBOARD,
     order,
   }))
 
@@ -245,13 +308,33 @@ export function buildSeededAtlas(): AtlasSnapshot {
     action,
   }))
 
-  const sections: Section[] = SEED_HOME_SECTIONS.map((s, order) => ({
+  const homeSections: Section[] = SEED_HOME_SECTIONS.map((s, order) => ({
     id: sectionId('home', s.name),
     screenId: 'home',
     name: s.name,
     weight: s.weight,
     order,
   }))
+
+  // Figma legitimately repeats layer names (two Trustmarkers, two Variant Selections),
+  // but section ids must be unique — repeats get an occurrence suffix while the display
+  // name stays verbatim.
+  const seenPdpIds = new Map<string, number>()
+  const pdpSections: Section[] = SEED_PDP_WIDGETS.map((w, order) => {
+    const nextTop = SEED_PDP_WIDGETS[order + 1]?.top ?? PDP_FRAME_H
+    const base = sectionId('pdp', w.name)
+    const n = (seenPdpIds.get(base) ?? 0) + 1
+    seenPdpIds.set(base, n)
+    return {
+      id: n === 1 ? base : `${base}-${n}`,
+      screenId: 'pdp',
+      name: w.name,
+      weight: nextTop - w.top,
+      order,
+    }
+  })
+
+  const sections: Section[] = [...homeSections, ...pdpSections]
 
   const journeys: Journey[] = SEED_JOURNEYS.map((j) => ({
     id: journeyId(j.category, j.name),

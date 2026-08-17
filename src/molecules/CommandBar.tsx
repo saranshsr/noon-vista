@@ -1,24 +1,25 @@
 import { CornerBrackets } from '../components/CornerBrackets'
 
 /**
- * The bottom bar — now zoom, history, and the handle that summons the tool dial.
+ * The zoom bar — bottom-right, and only zoom.
  *
- * The tools themselves moved out to `DialMenu`, a radial menu that opens at the cursor.
- * What stayed behind is what a ring genuinely can't hold:
+ * This used to be a bottom-centre command bar carrying the tool chip, undo/redo and
+ * zoom. It shrank on purpose, one decision per control:
  *
- *  · **Zoom.** `−  78%  +` is a stateful numeric readout with a stepper. A dial has
- *    nowhere to show a live value, and burying zoom was already tried once — the plan
- *    records the HUD being disabled and having to be brought back, because it left the
- *    product with no zoom control anywhere.
- *  · **Undo/redo.** High-frequency and needs to show whether there's anything to undo.
- *    Two clicks deep in a radial menu is the wrong home for the most-repeated action
- *    in an editor.
- *  · **A visible trigger for the dial.** Right-click is the real gesture, but an
- *    invisible one, and this project has already made the argument against
- *    undiscoverable affordances once, when ⌘K got a visible search control.
+ *  · **The tool chip went** because the dial is the tool switcher and two touchpoints
+ *    for the same tools meant neither read as canonical. Right-click summons the dial
+ *    at the cursor; the shortcut sheet (?) documents it. The cost — no persistent
+ *    active-tool indicator — was accepted deliberately.
+ *  · **Undo/redo went keyboard-only** (⌘Z / ⇧⌘Z). The risky cases keep a visible
+ *    affordance regardless: destructive edits raise a toast that carries its own Undo
+ *    button. What was lost is only the buttons, not the capability.
+ *  · **Zoom stayed** because `−  78%  +` is a stateful numeric readout with a stepper,
+ *    and burying zoom was already tried once — the plan records the HUD being disabled
+ *    and having to be brought back, because it left the product with no zoom control
+ *    anywhere. The readout doubles as reset-to-100%, fit-all frames everything.
  *
- * `TOOLS` still lives here because it is the single source of truth for the glyphs,
- * labels, hints and disabled reasons that the dial renders.
+ * `TOOLS` still lives in this module because it is the single source of truth for the
+ * glyphs, labels, hints and disabled reasons that the dial renders.
  *
  * Tools that aren't wired yet stay `disabled` with an explanatory tooltip rather than
  * omitted or — worse — present and inert. A visible, honestly-disabled control tells you
@@ -206,130 +207,62 @@ export const TOOLS: Tool[] = [
   { id: 'delete', label: 'Delete selection', short: 'Delete', hint: '⌫', glyph: Glyphs.delete },
 ]
 
-export function CommandBar({
-  activeTool,
-  dialOpen,
-  onOpenDial,
-  history,
-  onUndo,
-  onRedo,
+export function ZoomBar({
   scale,
   onZoomIn,
   onZoomOut,
   onResetZoom,
   onFit,
 }: {
-  activeTool: ToolId
-  /** Whether the dial is currently up, so the trigger can show it. */
-  dialOpen: boolean
-  /** Summon the dial. Called with the point to open it at, in client coordinates. */
-  onOpenDial: (at: { x: number; y: number }) => void
-  history: { canUndo: boolean; canRedo: boolean }
-  onUndo: () => void
-  onRedo: () => void
   scale: number
   onZoomIn: () => void
   onZoomOut: () => void
   onResetZoom: () => void
   onFit?: () => void
 }) {
-  const activeLabel = TOOLS.find((t) => t.id === activeTool)?.label ?? 'Tools'
-
   return (
-    <div className="commandbar" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="zoombar" onPointerDown={(e) => e.stopPropagation()}>
       <button
         type="button"
-        className="commandbar__dial has-brackets"
-        data-open={dialOpen}
-        aria-haspopup="menu"
-        aria-expanded={dialOpen}
-        title="Tools  right-click the canvas"
-        onClick={(e) => {
-          // Open above the button rather than on it, so the ring doesn't spawn half
-          // off the bottom of the viewport.
-          const r = e.currentTarget.getBoundingClientRect()
-          onOpenDial({ x: r.left + r.width / 2, y: r.top - 150 })
-        }}
+        className="zoombar__tool has-brackets"
+        onClick={onZoomOut}
+        aria-label="Zoom out"
+        title="Zoom out  −"
       >
         <CornerBrackets />
-        {/* Names the current mode, so the bar still answers "what tool am I in?" now
-            that there's no lit tile to read it off. */}
-        <span className="commandbar__glyph">{TOOLS.find((t) => t.id === activeTool)?.glyph}</span>
-        <span>{activeLabel}</span>
+        <span className="zoombar__glyph">−</span>
       </button>
-
-      <span className="commandbar__divider" aria-hidden />
-
-      <div className="commandbar__group">
+      <button
+        type="button"
+        className="zoombar__readout"
+        onClick={onResetZoom}
+        aria-label="Reset zoom to 100%"
+        title="Reset zoom  0"
+      >
+        {Math.round(scale * 100)}%
+      </button>
+      <button
+        type="button"
+        className="zoombar__tool has-brackets"
+        onClick={onZoomIn}
+        aria-label="Zoom in"
+        title="Zoom in  +"
+      >
+        <CornerBrackets />
+        <span className="zoombar__glyph">+</span>
+      </button>
+      {onFit && (
         <button
           type="button"
-          className="commandbar__tool has-brackets"
-          onClick={onUndo}
-          disabled={!history.canUndo}
-          aria-label="Undo"
-          title="Undo  ⌘Z"
+          className="zoombar__tool has-brackets"
+          onClick={onFit}
+          aria-label="Fit all screens"
+          title="Fit all screens  1"
         >
           <CornerBrackets />
-          {Glyphs.undo}
+          {Glyphs.fit}
         </button>
-        <button
-          type="button"
-          className="commandbar__tool has-brackets"
-          onClick={onRedo}
-          disabled={!history.canRedo}
-          aria-label="Redo"
-          title="Redo  ⇧⌘Z"
-        >
-          <CornerBrackets />
-          {Glyphs.redo}
-        </button>
-      </div>
-
-      <span className="commandbar__divider" aria-hidden />
-
-      <div className="commandbar__group">
-        <button
-          type="button"
-          className="commandbar__tool has-brackets"
-          onClick={onZoomOut}
-          aria-label="Zoom out"
-          title="Zoom out  −"
-        >
-          <CornerBrackets />
-          <span className="commandbar__glyph">−</span>
-        </button>
-        <button
-          type="button"
-          className="commandbar__zoom"
-          onClick={onResetZoom}
-          aria-label="Reset zoom to 100%"
-          title="Reset zoom  0"
-        >
-          {Math.round(scale * 100)}%
-        </button>
-        <button
-          type="button"
-          className="commandbar__tool has-brackets"
-          onClick={onZoomIn}
-          aria-label="Zoom in"
-          title="Zoom in  +"
-        >
-          <CornerBrackets />
-          <span className="commandbar__glyph">+</span>
-        </button>
-        {onFit && (
-          <button
-            type="button"
-            className="commandbar__tool has-brackets"
-            onClick={onFit}
-            aria-label="Fit all screens"
-            title="Fit all screens  1"
-          >
-            <CornerBrackets />
-            {Glyphs.fit}
-          </button>
-        )}
-      </div>
+      )}
     </div>
   )
 }

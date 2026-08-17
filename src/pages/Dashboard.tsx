@@ -12,7 +12,7 @@ import {
   CommandPalette,
   ShortcutSheet,
   LoadingOverlay,
-  CommandBar,
+  ZoomBar,
   DialMenu,
   EdgeCard,
   MultiSelectPanel,
@@ -1122,15 +1122,17 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* Zoom, bottom-right. Slides left of the inspector when it's open — the two
+            share the 20px right inset, and the panel's lower corner reaches down into
+            the bar's row. Undo/redo is keyboard-only (⌘Z / ⇧⌘Z, in the shortcut
+            sheet); the destructive-edit toast below still carries a visible Undo. */}
         {mode === 'map' && canvasReady && (
-          <div className="dashboard__widget dashboard__commandbar">
-            <CommandBar
-              activeTool={effectiveTool}
-              dialOpen={dial.open}
-              onOpenDial={openDial}
-              history={history}
-              onUndo={actions.undo}
-              onRedo={actions.redo}
+          <div
+            className={`dashboard__widget dashboard__zoombar${
+              rightNavOpen && focused ? ' is-shifted' : ''
+            }`}
+          >
+            <ZoomBar
               scale={zoom}
               onZoomIn={() => cameraRef.current?.zoomBy(1.6)}
               onZoomOut={() => cameraRef.current?.zoomBy(1 / 1.6)}
@@ -1140,9 +1142,10 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* The tool dial. Rendered as a sibling of the chrome rather than inside the
-            command bar, because it is summoned anywhere on the plane and must not be
-            clipped by, or positioned relative to, the bar. */}
+        {/* The tool dial — summoned by right-clicking the plane, and the only tool
+            touchpoint now that the command bar's chip is gone. Rendered as a sibling
+            of the chrome because it opens anywhere on the plane and must not be
+            clipped by, or positioned relative to, any bar. */}
         {mode === 'map' && (
           <DialMenu
             open={dial.open}

@@ -2256,14 +2256,14 @@ kbd {
 }
 
 /* The four-mark CornerBrackets component is now on every interactive control —
-   Explore rows, neighbour rows, screen cards, segments, command-bar tools, buttons —
+   Explore rows, neighbour rows, screen cards, segments, zoom-bar tools, buttons —
    so hover feels identical everywhere. The earlier two-mark pseudo-element variant
    was removed rather than left alongside it, which would have double-drawn. */
 .screen-plate,
 .sidebar-row.is-interactive,
 .neighbour-row.is-interactive,
 .atlas-search-trigger,
-.commandbar__tool:not(:disabled),
+.zoombar__tool:not(:disabled),
 .segmented__item {
   position: relative;
 }
@@ -2278,21 +2278,28 @@ kbd {
 .screen-plate.is-selected .corner-brackets__mark[data-corner='bl'] { bottom: -3px; left: -3px; }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   Bottom command bar
+   Zoom bar — bottom-right
    ══════════════════════════════════════════════════════════════════════════════ */
-.dashboard__commandbar {
+.dashboard__zoombar {
   position: absolute;
   bottom: 20px;
-  /* Transform-free centring — see .dashboard__switch. */
-  inset-inline: 0;
-  width: fit-content;
-  margin-inline: auto;
+  right: 20px;
+  /* Slides on `right`, NOT transform — this widget's child carries the glass, and a
+     translate here would establish a backdrop root and kill its own blur. Same rule,
+     same easing, same reason as .dashboard__right-nav. */
+  transition: right 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.commandbar {
+/* The open inspector shares the 20px right inset and its lower corner reaches into
+   this row, so the bar yields: panel width 340 + its 20px inset + a 20px gap. */
+.dashboard__zoombar.is-shifted {
+  right: 400px;
+}
+
+.zoombar {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   padding: 5px;
   background: var(--tool-fill);
   border: 1px solid var(--tool-border);
@@ -2301,20 +2308,7 @@ kbd {
   backdrop-filter: blur(var(--tool-blur));
 }
 
-.commandbar__group {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.commandbar__divider {
-  width: 1px;
-  height: 20px;
-  margin: 0 4px;
-  background: var(--hairline-3);
-}
-
-.commandbar__tool {
+.zoombar__tool {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -2332,12 +2326,12 @@ kbd {
     color var(--dur-hover) var(--ease-out);
 }
 
-.commandbar__tool:hover:not(:disabled) {
+.zoombar__tool:hover:not(:disabled) {
   background: var(--surface-3);
   color: var(--text-1);
 }
 
-.commandbar__tool[data-active='true'] {
+.zoombar__tool[data-active='true'] {
   background: var(--noon-pink-20);
   box-shadow: inset 0 0 0 1px var(--noon-pink-40);
   color: var(--noon-pink);
@@ -2346,24 +2340,24 @@ kbd {
 /* Unbuilt tools stay visible but plainly unavailable, with the reason in the
    tooltip. A control that is present and silently inert is the failure mode this
    whole effort has been unpicking. */
-.commandbar__tool:disabled {
+.zoombar__tool:disabled {
   opacity: 0.28;
   cursor: not-allowed;
   color: var(--text-4);
 }
 
-.commandbar__tool:focus-visible {
+.zoombar__tool:focus-visible {
   outline: 1px solid var(--noon-pink);
   outline-offset: -1px;
 }
 
-.commandbar__glyph {
+.zoombar__glyph {
   font-family: "Geist Pixel", sans-serif;
   font-size: 14px;
   line-height: 1;
 }
 
-.commandbar__zoom {
+.zoombar__readout {
   min-width: 52px;
   height: 30px;
   padding: 0 8px;
@@ -2379,11 +2373,11 @@ kbd {
   transition: background-color var(--dur-hover) var(--ease-out);
 }
 
-.commandbar__zoom:hover {
+.zoombar__readout:hover {
   background: var(--surface-3);
 }
 
-.commandbar__zoom:focus-visible {
+.zoombar__readout:focus-visible {
   outline: 1px solid var(--noon-pink);
   outline-offset: -1px;
 }
@@ -2706,7 +2700,9 @@ kbd {
    ══════════════════════════════════════════════════════════════════════════════ */
 .dashboard__minimap {
   position: absolute;
-  bottom: 66px;
+  /* Was 66px — stacked above the old bottom-centre command bar. The bar is gone
+     (zoom lives bottom-right now), so the minimap takes the bottom row itself. */
+  bottom: 20px;
   /* Transform-free centring — see .dashboard__switch. */
   inset-inline: 0;
   width: fit-content;
@@ -2758,7 +2754,7 @@ kbd {
 /* Segments deliberately have NO corner brackets. The sliding indicator is already
    the selection signal, and adding four pink marks on top of a pink chip made the
    control look busy and unresolved. Hover here is text weight and colour only. */
-.commandbar__tool .corner-brackets__mark {
+.zoombar__tool .corner-brackets__mark {
   border-color: var(--noon-pink);
 }
 
@@ -2768,7 +2764,7 @@ kbd {
 }
 
 /* Disabled controls must not advertise an interaction. */
-.commandbar__tool:disabled .corner-brackets {
+.zoombar__tool:disabled .corner-brackets {
   display: none;
 }
 
@@ -3117,7 +3113,9 @@ kbd {
    own glass. See .dashboard__switch. */
 .dashboard__notice {
   position: absolute;
-  bottom: 66px;
+  /* Was 66px, anchored above the command bar; the bar is gone. 20px matches the
+     breadcrumbs' row. */
+  bottom: 20px;
   inset-inline: 0;
   width: fit-content;
   margin-inline: auto;
@@ -3658,35 +3656,8 @@ kbd {
   pointer-events: none;
 }
 
-/* The dial's trigger in the slim bar. Right-click is the primary gesture, but an
-   invisible one — the same objection the plan raises about ⌘K-with-no-affordance. */
-.commandbar__dial {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: var(--control-h);
-  padding: 0 10px;
-  border-radius: var(--control-radius);
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.62);
-  cursor: pointer;
-  font-size: 11px;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  transition:
-    color 0.15s var(--ease-out),
-    background-color 0.15s var(--ease-out);
-}
-
-.commandbar__dial:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.commandbar__dial[data-open='true'] {
-  color: #f7306f;
-}
+/* The bar-mounted dial trigger is gone — the dial is right-click only now (and in
+   the shortcut sheet). One touchpoint for tools; the ring shows the active one. */
 
 /* The page name flashes noon pink and settles to white as the scramble resolves — the
    reference lerps this colour in JS; done here off the remount so the scramble itself

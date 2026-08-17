@@ -506,11 +506,14 @@ export function AtlasProvider({
     () => ({
       selectProject: (id) => {
         if (id === stateRef.current.projectId) return
-        // Reflect the switch in the URL so a reload keeps you on this project.
-        // Full routing (`?mode&screen&range`, plus popstate) is the next phase;
-        // this is the minimum that stops the feature from silently forgetting.
+        // Reflect the switch in the URL immediately — useUrlSync will settle the
+        // rest of the query string (mode, screen) once the new snapshot lands, but
+        // waiting for that would leave a beat where a reload forgets the switch.
+        // The stale `screen` param from the old project is dropped here for the
+        // same reason: it must not survive into a copied link for this project.
         const url = new URL(window.location.href)
         url.searchParams.set('project', id)
+        url.searchParams.delete('screen')
         window.history.replaceState(null, '', url)
         load(id)
       },

@@ -25,6 +25,7 @@ import { useAtlas, useAtlasActions } from '../state/AtlasProvider'
 import { useMetricSet, useMetrics } from '../state/useMetrics'
 import { useProjects } from '../state/useProjects'
 import { useHotkeys } from '../hooks/useHotkeys'
+import { useUrlSync } from '../hooks/useUrlSync'
 import { SHORTCUTS, bindShortcuts } from '../hooks/shortcuts'
 import type { ShortcutId } from '../hooks/shortcuts'
 import { useBootProgress } from '../state/useBootProgress'
@@ -464,6 +465,18 @@ export default function Dashboard() {
     setSelectedFlowId(null)
     setRightNavOpen(true)
   }, [])
+
+  // Deep links: `?project&mode&screen` mirrors this state, and popstate applies it
+  // back — see useUrlSync for the contract.
+  useUrlSync({
+    projectId,
+    selectProject: actions.selectProject,
+    mode,
+    switchMode,
+    focusedId,
+    focusScreen,
+    snapshot,
+  })
 
   /**
    * Opening a screen from the grid: switch, focus, but hold the panel until the cascade

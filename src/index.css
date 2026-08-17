@@ -2297,8 +2297,8 @@ kbd {
   background: var(--tool-fill);
   border: 1px solid var(--tool-border);
   border-radius: var(--tool-radius);
-  backdrop-filter: blur(var(--tool-blur));
   -webkit-backdrop-filter: blur(var(--tool-blur));
+  backdrop-filter: blur(var(--tool-blur));
 }
 
 .commandbar__group {
@@ -2475,8 +2475,8 @@ kbd {
   background: var(--tool-fill);
   border: 1px solid var(--tool-border);
   border-radius: var(--tool-radius);
-  backdrop-filter: blur(var(--tool-blur));
   -webkit-backdrop-filter: blur(var(--tool-blur));
+  backdrop-filter: blur(var(--tool-blur));
 }
 
 /* The shared interactive-control shape: a 30px tile with a 7px radius that tints on
@@ -2526,8 +2526,8 @@ kbd {
 .shortcuts {
   background: var(--tool-fill) !important;
   border-color: var(--tool-border) !important;
-  backdrop-filter: blur(var(--tool-blur));
   -webkit-backdrop-filter: blur(var(--tool-blur));
+  backdrop-filter: blur(var(--tool-blur));
 }
 
 /* Rows in the Explore panel and the neighbour lists become tool controls: full-width,
@@ -2912,8 +2912,8 @@ kbd {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  backdrop-filter: blur(60px);
   -webkit-backdrop-filter: blur(60px);
+  backdrop-filter: blur(60px);
   animation: pane-in 180ms var(--ease-out) both;
 }
 
@@ -2931,8 +2931,8 @@ kbd {
   );
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
-  backdrop-filter: blur(60px) saturate(1.4);
   -webkit-backdrop-filter: blur(60px) saturate(1.4);
+  backdrop-filter: blur(60px) saturate(1.4);
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.45),
     0 2px 12px rgba(0, 0, 0, 0.2),
@@ -3131,8 +3131,8 @@ kbd {
   background: var(--tool-fill);
   border: 1px solid var(--tool-border);
   border-radius: var(--tool-radius);
-  backdrop-filter: blur(var(--tool-blur));
   -webkit-backdrop-filter: blur(var(--tool-blur));
+  backdrop-filter: blur(var(--tool-blur));
 }
 
 .dashboard__notice-text {

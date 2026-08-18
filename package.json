@@ -10,8 +10,8 @@
     "lint": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@react-spring/web": "^10.1.2",
     "@supabase/supabase-js": "^2.112.3",
+    "motion": "^13.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "retune": "^0.7.6"

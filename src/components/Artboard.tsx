@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CSSProperties } from 'react'
 
 type ArtboardProps = {
@@ -31,6 +32,9 @@ type ArtboardProps = {
   selected?: boolean
   /** Card width in world px — every other dimension scales from this. */
   width?: number
+  /** First-fold boards load eagerly so the boot's decode gate can't hang in a
+      background tab (lazy images never start without intersection updates). */
+  eager?: boolean
 }
 
 // Ratios captured 1:1 from Figma "Atlas Screen" (node 14:9227), base width 200.
@@ -54,7 +58,10 @@ export function Artboard({
   hovered = false,
   selected = false,
   width = 200,
+  eager = false,
 }: ArtboardProps) {
+  const [retried, setRetried] = useState(false)
+  const [failed, setFailed] = useState(false)
   // Priority: a selected board shows the solid edit-target ring even when it's also the
   // focused (last-added) one, so a multi-selection reads as a set rather than one board.
   const glowSpread = width * 0.18
@@ -87,7 +94,7 @@ export function Artboard({
         {label}
       </span>
       <div
-        className="atlas-board__frame"
+        className={`atlas-board__frame${failed ? ' is-image-failed' : ''}`}
         style={{
           height: width * ASPECT,
           borderRadius: width * RADIUS,
@@ -97,11 +104,15 @@ export function Artboard({
         }}
       >
         <img
-          src={src}
+          src={failed ? undefined : retried ? `${src}?retry=1` : src}
           alt={label}
           draggable={false}
-          loading="lazy"
+          loading={eager ? 'eager' : 'lazy'}
           decoding="async"
+          /* One cache-busted retry, then give up legibly. A transient dev-server or
+             CDN hiccup used to leave a permanently black frame with no way to tell a
+             failed image from a dark screenshot. */
+          onError={() => (retried ? setFailed(true) : setRetried(true))}
           style={{
             display: 'block',
             width: '100%',

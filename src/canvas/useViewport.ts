@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
+import { animate } from 'motion'
+import type { AnimationPlaybackControls } from 'motion'
 
 export interface Viewport {
   /** Screen-space x offset of the world origin, in px. */
@@ -69,35 +71,46 @@ export function useViewport(initial?: Partial<Viewport>): ViewportController {
   const drag = useRef({ active: false, lastX: 0, lastY: 0 })
   // Cleanup for the in-flight drag's window listeners, if any.
   const stopDrag = useRef<(() => void) | null>(null)
-  // Latest viewport + any running focus animation (rAF handle).
+  // Latest viewport + any running focus animation (Motion playback controls).
   const vpRef = useRef(viewport)
   vpRef.current = viewport
-  const anim = useRef<number | null>(null)
+  const anim = useRef<AnimationPlaybackControls | null>(null)
 
   const cancelAnim = useCallback(() => {
-    if (anim.current != null) {
-      cancelAnimationFrame(anim.current)
-      anim.current = null
-    }
+    anim.current?.stop()
+    anim.current = null
   }, [])
 
+  /**
+   * Camera transitions ride a Motion spring rather than the easeOutCubic tween this
+   * replaced. The interesting property is velocity continuity: mashing + three times
+   * used to restart the ease from zero each press, which read as three separate
+   * lurches — a spring interrupted mid-flight keeps its momentum, so a run of steps
+   * feels like one accelerating move. `visualDuration` keeps the old call sites'
+   * duration semantics; the slight bounce is the same material language as the
+   * board springs.
+   */
   const animateTo = useCallback(
     (target: Partial<Viewport>, duration = 450) => {
       cancelAnim()
       const from = vpRef.current
       const to = { ...from, ...target }
-      const start = performance.now()
-      const ease = (t: number) => 1 - Math.pow(1 - t, 3) // easeOutCubic
-      const tick = (now: number) => {
-        const k = ease(Math.min(1, (now - start) / duration))
-        setViewport({
-          x: from.x + (to.x - from.x) * k,
-          y: from.y + (to.y - from.y) * k,
-          scale: from.scale + (to.scale - from.scale) * k,
-        })
-        anim.current = k < 1 ? requestAnimationFrame(tick) : null
+      if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setViewport(to)
+        return
       }
-      anim.current = requestAnimationFrame(tick)
+      anim.current = animate(0, 1, {
+        type: 'spring',
+        visualDuration: duration / 1000,
+        bounce: 0.12,
+        onUpdate: (k) => {
+          setViewport({
+            x: from.x + (to.x - from.x) * k,
+            y: from.y + (to.y - from.y) * k,
+            scale: from.scale + (to.scale - from.scale) * k,
+          })
+        },
+      })
     },
     [cancelAnim],
   )

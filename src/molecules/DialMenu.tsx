@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { animated, useSprings } from '@react-spring/web'
+import { motion } from 'motion/react'
 import { Glyphs, TOOLS } from './CommandBar'
 import type { Tool, ToolId } from './CommandBar'
 import { ScrambleText } from '../components/ScrambleText'
@@ -23,10 +23,11 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
  *     fill underneath. Copying the declaration would import a dead property and, worse,
  *     imply this surface is glass when it can't be. Copied the result, not the intent.
  *
- *  2. **Springs on `@react-spring/web`, not framer-motion.** This project has one
- *     animation dependency and adding a second for a single component isn't a trade worth
- *     making. `useSprings` covers the tile transforms; tilt, mouse-follow and ring angle
- *     run in a rAF loop writing to refs, which is how `GridCanvas` already works.
+ *  2. **Springs on `motion/react` (motion.dev), declaratively.** The tile choreography is
+ *     fully derivable from state (revealed count, hover, closing, page spin), so each tile
+ *     renders a `motion.div` with a computed target instead of an imperative spring API.
+ *     Tilt, mouse-follow and ring angle still run in a rAF loop writing to refs, which is
+ *     how `GridCanvas` already works — Motion is for targets, not for per-frame physics.
  *
  *  3. **Our glyphs, our palette.** The reference uses 20px lucide icons and a blue
  *     scramble; this uses the hand-drawn 1px-stroke glyphs the command bar already owns
@@ -135,12 +136,6 @@ export function DialMenu({
   // rotated a third of a turn back around the ring on a page change — so a page turn
   // reads as the ring spinning rather than as everything blinking.
   // Under reduced motion the tiles start already seated, so nothing blooms.
-  const [springs, api] = useSprings(count, (i) => {
-    const seat = seatOf(i, count)
-    return reducedMotion
-      ? { x: seat.x, y: seat.y, scale: 1, opacity: 1, immediate: true }
-      : { x: 0, y: 0, scale: 0, opacity: 0, immediate: true }
-  })
 
   /**
    * Open/close lifecycle, including the exit animation.
@@ -175,15 +170,6 @@ export function DialMenu({
     }
 
     const n = count
-    const results = api.start((i) => ({
-      x: 0,
-      y: 0,
-      scale: 0,
-      opacity: 0,
-      config: { tension: 520, friction: 26 },
-      delay: (n - 1 - i) * EXIT_STEP,
-    }))
-
     let tick = 0
     const ticker = window.setInterval(() => {
       tick++
@@ -191,44 +177,28 @@ export function DialMenu({
       if (tick >= n) window.clearInterval(ticker)
     }, EXIT_STEP)
 
-    void Promise.all(results).then(finish)
-    // Belt and braces: an interrupted spring may never settle, and a dial that failed to
-    // unmount would sit invisible over the canvas swallowing clicks.
+    // The i=0 tile retracts last (reverse order); its onAnimationComplete calls
+    // `finishExit`. The timeout is belt and braces — an interrupted animation may
+    // never complete, and a dial that failed to unmount would sit invisible over
+    // the canvas swallowing clicks.
+    finishExit.current = finish
     const bail = window.setTimeout(finish, (n - 1) * EXIT_STEP + 420)
 
     return () => {
       window.clearInterval(ticker)
       window.clearTimeout(bail)
     }
-  }, [open, mounted, count, api, reducedMotion])
+  }, [open, mounted, count, reducedMotion])
 
+  // Tile targets are computed per-render (see the motion.div below) — the imperative
+  // spring API this replaced needed an effect to re-seat tiles on every state change;
+  // a declarative target needs only the state.
   useEffect(() => {
-    // The exit runner owns the springs while it runs; re-seating tiles here would yank
-    // them back out to the ring mid-retract.
-    if (closing) return
-    if (!open) {
-      setRevealed(0)
-      return
-    }
-    const initial = spinKey === 0
-    api.start((i) => {
-      const seat = seatOf(i, count)
-      if (i < revealed) {
-        return {
-          x: seat.x,
-          y: seat.y,
-          scale: hovered === items[i]?.id ? 1.08 : 1,
-          opacity: 1,
-          config: initial
-            ? { tension: 600, friction: 28 }
-            : { tension: 350, friction: 22 },
-          delay: initial ? 0 : i * 15,
-        }
-      }
-      const from = initial ? { x: 0, y: 0 } : seatOf(i, count, direction * 60)
-      return { x: from.x, y: from.y, scale: initial ? 0 : 0.6, opacity: 0, immediate: false }
-    })
-  }, [open, closing, revealed, hovered, count, items, api, seatOf, spinKey, direction])
+    if (!closing && !open) setRevealed(0)
+  }, [open, closing])
+
+  /** Set by the exit effect; called by the last retracting tile's completion. */
+  const finishExit = useRef<(() => void) | null>(null)
 
   /** Reveal the tiles one at a time, with an ascending click per tile. */
   useEffect(() => {
@@ -523,8 +493,6 @@ export function DialMenu({
         </div>
 
         {items.map((tool, i) => {
-          const spring = springs[i]
-          if (!spring) return null
           const disabled = !!tool.why
           const isHovered = hovered === tool.id
           const isOn =
@@ -534,23 +502,59 @@ export function DialMenu({
           const live = i < revealed
 
           return (
-            <animated.div
+            <motion.div
               key={tool.id}
               className={`dial__seat${disabled ? ' is-disabled' : ''}${isOn ? ' is-on' : ''}`}
               style={{
                 width: ITEM_SIZE,
                 height: ITEM_SIZE,
-                // The seat's box is centred on the ring origin; the spring's x/y then carry
-                // it out to its place, which is what lets a tile bloom from the middle.
+                // The seat's box is centred on the ring origin; the animated x/y then
+                // carry it out to its place — a tile blooms from the middle.
                 marginLeft: -ITEM_SIZE / 2,
                 marginTop: -ITEM_SIZE / 2,
-                // Bound as spring values, not sampled with `.get()` — a sampled number is
-                // read once per render and would never animate.
-                x: spring.x,
-                y: spring.y,
-                scale: spring.scale,
-                opacity: spring.opacity,
                 pointerEvents: live && !disabled ? 'auto' : 'none',
+              }}
+              initial={
+                reducedMotion
+                  ? { ...seatOf(i, count), scale: 1, opacity: 1 }
+                  : { x: 0, y: 0, scale: 0, opacity: 0 }
+              }
+              animate={(() => {
+                if (closing) return { x: 0, y: 0, scale: 0, opacity: 0 }
+                const seat = seatOf(i, count)
+                if (live)
+                  return {
+                    x: seat.x,
+                    y: seat.y,
+                    scale: hovered === tool.id ? 1.08 : 1,
+                    opacity: 1,
+                  }
+                // Unrevealed: staged at the centre on first open, or a third of a turn
+                // back around the ring on a page change — a page turn reads as the ring
+                // spinning rather than as everything blinking.
+                const staging = spinKey === 0 ? { x: 0, y: 0 } : seatOf(i, count, direction * 60)
+                return { ...staging, scale: spinKey === 0 ? 0 : 0.6, opacity: 0 }
+              })()}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : closing
+                    ? {
+                        type: 'spring',
+                        stiffness: 520,
+                        damping: 26,
+                        // Retract in reverse reveal order — the ring unwinds the way it
+                        // wound up rather than collapsing all at once.
+                        delay: ((count - 1 - i) * EXIT_STEP) / 1000,
+                      }
+                    : spinKey === 0
+                      ? { type: 'spring', stiffness: 600, damping: 28 }
+                      : { type: 'spring', stiffness: 350, damping: 22, delay: (i * 15) / 1000 }
+              }
+              onAnimationComplete={() => {
+                // The i=0 tile carries the longest exit delay, so its completion is the
+                // whole ring's.
+                if (closing && i === 0) finishExit.current?.()
               }}
               onMouseEnter={() => {
                 if (disabled) return
@@ -574,7 +578,7 @@ export function DialMenu({
                 <span className="dial__caption">{tool.short ?? tool.label}</span>
               </div>
               {isHovered && !disabled && <span className="dial__hover-ring" aria-hidden />}
-            </animated.div>
+            </motion.div>
           )
         })}
       </div>

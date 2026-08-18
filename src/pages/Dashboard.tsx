@@ -31,6 +31,7 @@ import type { ShortcutId } from '../hooks/shortcuts'
 import { useBootProgress } from '../state/useBootProgress'
 import { useViewPrefs } from '../state/useViewPrefs'
 import { ScreensView } from './ScreensView'
+import { AnimatePresence, motion } from 'motion/react'
 
 /**
  * noon Atlas — main landing page (Figma node 54:65001).
@@ -1187,8 +1188,17 @@ export default function Dashboard() {
             The panel animates its *children* rather than itself — this sits inside
             `.dashboard__chrome`, and a transform on the toast would establish a backdrop
             root and silently kill its own glass. */}
+        <AnimatePresence>
         {notice && (
-          <div className="dashboard__widget dashboard__notice" role="status">
+          <motion.div
+            key="notice"
+            className="dashboard__widget dashboard__notice"
+            role="status"
+            initial={{ opacity: 0, bottom: 12 }}
+            animate={{ opacity: 1, bottom: 20 }}
+            exit={{ opacity: 0, bottom: 12 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
             <span className="pixel dashboard__notice-text">{notice}</span>
             {history.canUndo && (
               <button
@@ -1202,8 +1212,9 @@ export default function Dashboard() {
                 <span className="pixel">Undo</span>
               </button>
             )}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {mode === 'map' && toggles.minimap && canvasReady && snapshot && graph && (
           <div className="dashboard__widget dashboard__minimap">
@@ -1245,6 +1256,7 @@ export default function Dashboard() {
       {/* Full stat set for the connector under the pointer. Suppressed while a panel
           swap is mid-flight or a board is being dragged, so it can't stack up on top of
           another transition. */}
+      <AnimatePresence>
       {mode === 'map' && hoveredFlow && !cascading && (() => {
         const f = snapshot?.flows.find((x) => x.id === hoveredFlow.id)
         const from = f && snapshot?.screens.find((sc) => sc.id === f.from)
@@ -1252,6 +1264,7 @@ export default function Dashboard() {
         if (!f || !from || !to) return null
         return (
           <EdgeCard
+            key={f.id}
             x={hoveredFlow.x}
             y={hoveredFlow.y}
             fromLabel={from.label}
@@ -1261,6 +1274,7 @@ export default function Dashboard() {
           />
         )
       })()}
+      </AnimatePresence>
 
       <ShortcutSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 

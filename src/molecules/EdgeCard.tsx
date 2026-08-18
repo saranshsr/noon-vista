@@ -1,5 +1,6 @@
 import type { Metric, MetricSet } from '../domain/metrics'
 import { formatMetric } from '../domain/metrics'
+import { motion } from 'motion/react'
 
 const ORDER = [
   'flow_users',
@@ -63,7 +64,18 @@ export function EdgeCard({
   const top = Math.max(16, y + 18)
 
   return (
-    <div className="edge-card" style={{ left, top }} role="tooltip">
+    <motion.div
+      className="edge-card"
+      style={{ left, top }}
+      role="tooltip"
+      /* Opacity only — this surface carries glass, and a transform would establish a
+         backdrop root and kill its own blur. Presence (the exit) is provided by the
+         AnimatePresence wrapper at the call site. */
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+    >
       <div className="edge-card__body">
         <div className="edge-card__header">
           <span className="edge-card__from pixel">{fromLabel} to</span>
@@ -107,6 +119,6 @@ export function EdgeCard({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -57,8 +57,17 @@ export function useBootProgress({
   /** Ticks so the time-paced component of the counter re-renders as it climbs. */
   const [elapsed, setElapsed] = useState(0)
 
+  /**
+   * Warm loads skip most of the theatre. If everything is already resolved within
+   * the first 400ms — cached data, cached images, a returning user — holding the
+   * overlay for the full scripted duration makes the app feel slower than it is,
+   * dozens of times a day. The hold shrinks to a beat long enough to read as a
+   * deliberate transition rather than a flash.
+   */
+  const holdMs = allDone && elapsed < 400 ? Math.min(minVisibleMs, 650) : minVisibleMs
+
   useEffect(() => {
-    const remaining = Math.max(0, minVisibleMs - (performance.now() - mountedAt.current))
+    const remaining = Math.max(0, holdMs - (performance.now() - mountedAt.current))
     const done = window.setTimeout(() => setMinElapsed(true), remaining)
     // 50ms, matching the reference's counter cadence.
     const tick = window.setInterval(() => setElapsed(performance.now() - mountedAt.current), 50)
@@ -66,7 +75,7 @@ export function useBootProgress({
       window.clearTimeout(done)
       window.clearInterval(tick)
     }
-  }, [minVisibleMs])
+  }, [holdMs, minVisibleMs])
 
   /**
    * The lower of "how much is actually ready" and "how far through the hold we are".
@@ -76,7 +85,7 @@ export function useBootProgress({
    * parks at 100% for two seconds waiting for a timer to expire — which looks broken
    * and is the usual failure of a minimum-duration splash.
    */
-  const timeProgress = Math.min(100, Math.round((elapsed / minVisibleMs) * 100))
+  const timeProgress = Math.min(100, Math.round((elapsed / holdMs) * 100))
   const progress = Math.min(realProgress, timeProgress)
 
   /** Latest step still in flight — what the overlay says it's doing. */

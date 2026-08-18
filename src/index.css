@@ -3980,3 +3980,42 @@ input:focus-visible,
     repeating-linear-gradient(-45deg, transparent 0 6px, rgba(255, 255, 255, 0.04) 6px 12px),
     #0b0b0d;
 }
+
+/* The hovered widget band lights up on the artboard itself, so the floating stats
+   card and the region it describes read as one unit. Hairline + faint tint — the
+   screenshot stays legible through it. */
+.master-image__section:hover {
+  background: rgba(247, 48, 111, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(247, 48, 111, 0.35);
+}
+
+/* ── House tooltip ─────────────────────────────────────────────────────────── */
+.tip-host {
+  position: relative;
+  display: inline-flex;
+}
+.tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  /* A transform is fine here: the tip carries no glass and nothing blurs inside it. */
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border: 1px solid var(--hairline-2);
+  border-radius: 5px;
+  background: rgba(16, 16, 20, 0.95);
+  color: var(--text-1);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  /* The delay lives on the hover state, so the fade-OUT is immediate. */
+  z-index: 300;
+}
+.tip-host:hover .tip,
+.tip-host:focus-within .tip {
+  opacity: 1;
+  transition-delay: 350ms;
+}

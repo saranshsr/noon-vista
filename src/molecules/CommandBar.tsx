@@ -1,4 +1,5 @@
 import { CornerBrackets } from '../components/CornerBrackets'
+import { Tip } from '../components/Tip'
 
 /**
  * The zoom bar — bottom-right, and only zoom.
@@ -222,35 +223,38 @@ export function ZoomBar({
 }) {
   return (
     <div className="zoombar" onPointerDown={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        className="zoombar__tool has-brackets"
-        onClick={onZoomOut}
-        aria-label="Zoom out"
-        title="Zoom out  −"
-      >
-        <CornerBrackets />
-        <span className="zoombar__glyph">−</span>
-      </button>
-      <button
-        type="button"
-        className="zoombar__readout"
-        onClick={onResetZoom}
-        aria-label="Reset zoom to 100%"
-        title="Reset zoom  0"
-      >
-        {Math.round(scale * 100)}%
-      </button>
-      <button
-        type="button"
-        className="zoombar__tool has-brackets"
-        onClick={onZoomIn}
-        aria-label="Zoom in"
-        title="Zoom in  +"
-      >
-        <CornerBrackets />
-        <span className="zoombar__glyph">+</span>
-      </button>
+      <Tip label="Zoom out  −">
+        <button
+          type="button"
+          className="zoombar__tool has-brackets"
+          onClick={onZoomOut}
+          aria-label="Zoom out"
+        >
+          <CornerBrackets />
+          <span className="zoombar__glyph">−</span>
+        </button>
+      </Tip>
+      <Tip label="Reset zoom  0">
+        <button
+          type="button"
+          className="zoombar__readout"
+          onClick={onResetZoom}
+          aria-label="Reset zoom to 100%"
+        >
+          {Math.round(scale * 100)}%
+        </button>
+      </Tip>
+      <Tip label="Zoom in  +">
+        <button
+          type="button"
+          className="zoombar__tool has-brackets"
+          onClick={onZoomIn}
+          aria-label="Zoom in"
+        >
+          <CornerBrackets />
+          <span className="zoombar__glyph">+</span>
+        </button>
+      </Tip>
       {onFit && (
         <button
           type="button"

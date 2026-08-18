@@ -1,3 +1,4 @@
+import { MotionConfig } from 'motion/react'
 import Dashboard from './pages/Dashboard'
 import Gallery from './pages/Gallery'
 import { ErrorBoundary } from './components'
@@ -29,9 +30,14 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <AtlasProvider initialProjectId={projectId}>
-        <Dashboard />
-      </AtlasProvider>
+      {/* Every Motion animation in the tree honours the OS reduce-motion setting.
+          The older rAF code paths check useReducedMotion by hand; this is the same
+          contract for everything declarative. */}
+      <MotionConfig reducedMotion="user">
+        <AtlasProvider initialProjectId={projectId}>
+          <Dashboard />
+        </AtlasProvider>
+      </MotionConfig>
     </ErrorBoundary>
   )
 }

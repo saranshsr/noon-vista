@@ -13,7 +13,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 import { AtlasConnectors } from './AtlasConnectors'
 import type { FlowWeight } from './AtlasConnectors'
 import type { Flow, FlowId, Screen, ScreenId, Vec } from '../domain/types'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 
 /**
  * The noon Atlas — screens and flows laid out on the infinite plane.
@@ -395,13 +395,20 @@ export function AtlasBoards({
         <div className="atlas-marquee-host" onPointerDown={onMarqueeDown} aria-hidden />
       )}
 
+      <AnimatePresence>
       {marquee && (
-        <div
+        <motion.div
+          key="marquee"
           className="atlas-marquee"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12, ease: 'easeOut' }}
           aria-hidden
           style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }}
         />
       )}
+      </AnimatePresence>
 
       {/* Draw-flow preview. A separate SVG from AtlasConnectors so the ~60/s cursor
           updates don't re-render all the committed edges. Positioned at world origin like

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { Flow, Project, Screen, ScreenId } from '../domain/types'
+import { AnimatePresence, motion } from 'motion/react'
 
 export type PaletteAction =
   | { kind: 'screen'; id: ScreenId; label: string; hint?: string }
@@ -112,7 +113,6 @@ export function CommandPalette({
     el?.scrollIntoView({ block: 'nearest' })
   }, [active])
 
-  if (!open) return null
 
   const commit = (action: PaletteAction | undefined) => {
     if (!action) return
@@ -134,17 +134,29 @@ export function CommandPalette({
   }
 
   return (
-    <div
+    <AnimatePresence>
+    {open && (
+    <motion.div
       className="palette__scrim"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div
+      {/* Rises on `top`, not transform — glass surface, standing constraint. */}
+      <motion.div
         className="palette"
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
+        style={{ position: 'relative' }}
+        initial={{ top: 10, opacity: 0 }}
+        animate={{ top: 0, opacity: 1 }}
+        exit={{ top: 6, opacity: 0 }}
+        transition={{ type: 'spring', visualDuration: 0.26, bounce: 0.1 }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault()
@@ -206,8 +218,10 @@ export function CommandPalette({
             <kbd>esc</kbd> dismiss
           </span>
         </footer>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    )}
+    </AnimatePresence>
   )
 }
 

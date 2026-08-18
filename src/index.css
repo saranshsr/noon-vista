@@ -2021,6 +2021,16 @@ kbd {
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* The top-centre Map/Screens switch floats directly over the plane, where a 2% tint
+   is no fill at all — board labels read straight through it (the RightNav's tabs skip
+   this: they already sit ON glass, and stacking blurs is noise). Same fill and blur
+   as every other tool surface, webkit-first so the minifier keeps both. */
+.dashboard__switch .segmented {
+  background: var(--tool-fill);
+  -webkit-backdrop-filter: blur(var(--tool-blur));
+  backdrop-filter: blur(var(--tool-blur));
+}
+
 /*
  * Selection is an underline, not a filled chip.
  *

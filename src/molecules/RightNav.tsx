@@ -7,6 +7,7 @@ import { MasterImage } from './MasterImage'
 import type { HoveredSection } from './MasterImage'
 import { SegmentedControl } from './SegmentedControl'
 import type { Device, ScreenId, Section } from '../domain/types'
+import { AnimatePresence, motion } from 'motion/react'
 
 /**
  * The single column width (Device Size + tabs are 299/300 in Figma).
@@ -80,11 +81,20 @@ function SecondaryStats({ stats }: { stats: Stat[] }) {
   if (stats.length === 0) return null
   return (
     <div className="inspector__rows" style={{ width: CONTENT_W }}>
-      {stats.map((s) => (
-        <div key={s.label} className="inspector__row">
+      {stats.map((s, i) => (
+        /* Rows land in reading order, 25ms apart — enough to give the list a
+           direction, not enough to make anyone wait. Transforms are fine HERE:
+           these are children inside the glass, not ancestors of it. */
+        <motion.div
+          key={s.label}
+          className="inspector__row"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut', delay: i * 0.025 }}
+        >
           <span className="pixel-line inspector__row-label">{s.label}</span>
           <span className="pixel inspector__row-value">{s.value}</span>
-        </div>
+        </motion.div>
       ))}
     </div>
   )
@@ -449,8 +459,17 @@ export function RightNav({
             width={CONTENT_W}
             onClick={() => setVpOpen((o) => !o)}
           />
+          <AnimatePresence>
           {vpOpen && (
-            <div className="rightnav__device-menu" role="menu" onMouseDown={(e) => e.stopPropagation()}>
+            <motion.div
+              className="rightnav__device-menu"
+              role="menu"
+              onMouseDown={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.14, ease: 'easeOut' }}
+            >
               {VIEWPORTS.map((v, i) => (
                 <button
                   key={v.name}
@@ -473,8 +492,9 @@ export function RightNav({
               <span className="pixel-line rightnav__device-note">
                 Windows the page — never rescales it
               </span>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
 
         {/* The first-fold guarantee. */}

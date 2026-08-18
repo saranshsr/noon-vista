@@ -9,6 +9,7 @@ import { JourneyStrip } from '../molecules/JourneyStrip'
 import type { AtlasSnapshot, FlowGraph, MetricScope, MetricSet, ScreenId } from '../domain'
 import { buildCategoryTree, findJourney, formatMetric, screensInCategory } from '../domain'
 import { useMetrics } from '../state/useMetrics'
+import { motion } from 'motion/react'
 
 /**
  * Screens mode — a structured browser over the app, after Mobbin.
@@ -290,8 +291,15 @@ export function ScreensView({
           ) : (
             <div className={`browser__grid${exiting ? ' is-exiting' : ''}`}>
               {plates.map((screen, i) => (
-                <ScreenPlate
+                /* `layout` animates re-flow: filtering or re-sorting used to teleport
+                   every surviving plate to its new slot. Transforms are fine on
+                   plates — they carry no glass. */
+                <motion.div
                   key={screen.id}
+                  layout
+                  transition={{ type: 'spring', visualDuration: 0.3, bounce: 0.12 }}
+                >
+                <ScreenPlate
                   label={screen.label}
                   imageUrl={screen.imageUrl}
                   selected={screen.id === focusedId}
@@ -301,6 +309,7 @@ export function ScreensView({
                   onClick={() => onOpenScreen(screen.id)}
                   stats={plateStats(screen.id)}
                 />
+                </motion.div>
               ))}
             </div>
           )

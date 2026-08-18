@@ -430,7 +430,7 @@ body {
 
 /* Belt and braces: make sure nothing leaves a lingering transform on a panel that
    wants to blur. `none` is the value that restores a real backdrop. */
-.dashboard__sidenav:not(.is-closing) > div,
+.dashboard__sidenav > div,
 .dashboard__right-nav > * {
   transform: none;
 }
@@ -2830,21 +2830,6 @@ kbd {
    Explore panel — exit
    It had an entrance and no exit, so it grew in gracefully then blinked out.
    ══════════════════════════════════════════════════════════════════════════════ */
-.dashboard__sidenav.is-closing {
-  animation: sidenav-collapse 180ms var(--ease-out) both;
-  pointer-events: none;
-}
-
-@keyframes sidenav-collapse {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.97);
-  }
-}
 
 /* ══════════════════════════════════════════════════════════════════════════════
    Pan mode

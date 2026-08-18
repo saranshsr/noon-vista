@@ -153,14 +153,8 @@ export default function Dashboard() {
    * Kept mounted through its exit. It had an entrance animation and no exit, so the
    * panel grew in gracefully and then simply blinked out of existence.
    */
-  const [navClosing, setNavClosing] = useState(false)
-  const closeNav = useCallback(() => {
-    setNavClosing(true)
-    window.setTimeout(() => {
-      setNavOpen(false)
-      setNavClosing(false)
-    }, 180)
-  }, [])
+  // Exit animation is AnimatePresence's job now (see the sidenav render).
+  const closeNav = useCallback(() => setNavOpen(false), [])
   const [section, setSection] = useState<HoveredSection | null>(null)
   const [focusedId, setFocusedId] = useState<ScreenId | null>(null)
   const [focusNonce, setFocusNonce] = useState(0)
@@ -1067,9 +1061,17 @@ export default function Dashboard() {
           <TopSwitch active={mode} onChange={hasGraph ? switchMode : undefined} />
         </div>
 
+        <AnimatePresence>
         {navOpen && (
-          <div
-            className={`dashboard__widget dashboard__sidenav${navClosing ? ' is-closing' : ''}`}
+          <motion.div
+            key="sidenav"
+            className="dashboard__widget dashboard__sidenav"
+            /* Exit is Motion-owned now — the hand-rolled navClosing/180ms-timeout
+               state machine this replaces was the last pre-Motion choreography in
+               the app. Opacity only: the sidenav is glass, and its CSS entrance
+               already flirts with a transform for the morph; the exit must not. */
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
           >
             <Sidebar
               fill
@@ -1081,8 +1083,9 @@ export default function Dashboard() {
                 closeNav()
               }}
             />
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* The right panel is one slot with two occupants: a selected flow takes
             precedence over the focused screen, because clicking an edge is a more

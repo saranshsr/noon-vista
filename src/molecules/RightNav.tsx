@@ -314,11 +314,6 @@ type InspectorTab = 'stats' | 'navigateTo' | 'reachedFrom'
  * When the parent is unbounded (e.g. the gallery) the panel hugs its content.
  */
 type RightNavProps = {
-  /** True while the numbers are synthetic — renders the SIMULATED badge. Every
-      MetricSet has carried `mocked: true` since the metrics layer landed; this is
-      the first surface to say it out loud. It must be impossible to screenshot
-      this panel into a deck without the word coming along. */
-  simulated?: boolean
   /** forwarded to the preview — hover a section block (null on leave) */
   onHoverSection?: (info: HoveredSection | null) => void
   /** title + preview image of the artboard currently in focus on the canvas */
@@ -391,12 +386,23 @@ export function RightNav({
   onSelectScreen,
   screenId,
   onClose,
-  simulated = false,
 }: RightNavProps) {
   const [tab, setTab] = useState<InspectorTab>('stats')
   /** Which device viewport the preview is windowed to. 0 is the artboard's own size. */
   const [vp, setVp] = useState(0)
   const [vpOpen, setVpOpen] = useState(false)
+
+  /** The pane's content height — the morph target. 'auto' until first measure. */
+  const [paneHeight, setPaneHeight] = useState<number | 'auto'>('auto')
+  const paneInnerRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = paneInnerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setPaneHeight(el.offsetHeight))
+    ro.observe(el)
+    setPaneHeight(el.offsetHeight)
+    return () => ro.disconnect()
+  }, [tab])
 
   // Moving to another screen should land on its stats, not leave you looking at a
   // neighbour list you opened for the previous one.
@@ -504,16 +510,7 @@ export function RightNav({
         </div>
 
         {/* The first-fold guarantee. */}
-        {tab === 'stats' && (
-          <>
-            {simulated && (
-              <span className="pixel-line rightnav__simulated" title="These numbers are synthetic — the analytics backend isn't wired in yet.">
-                SIMULATED DATA
-              </span>
-            )}
-            <PrimaryStats stats={primary} />
-          </>
-        )}
+        {tab === 'stats' && <PrimaryStats stats={primary} />}
 
         {/* Tab strip (Figma 54:80782) — one SegmentedControl, not a hand-rolled dupe. */}
         <SegmentedControl
@@ -534,7 +531,19 @@ export function RightNav({
       </div>
 
       {/* Keyed on the tab so the pane re-mounts and replays its entrance. */}
-      <div className="inspector-pane rightnav__pane" key={tab} style={{ width: CONTENT_W }}>
+      {/* The pane's height is animated to its content: switching from a tall stat
+          list to a two-row "Navigate to" used to snap the card short. The OUTER div
+          persists across tabs and morphs; the INNER keyed div remounts so the
+          pane-in entrance still replays per tab. Height, not transform — the card
+          is glass. */}
+      <motion.div
+        className="rightnav__pane"
+        style={{ width: CONTENT_W }}
+        animate={{ height: paneHeight }}
+        initial={false}
+        transition={{ type: 'spring', visualDuration: 0.32, bounce: 0.1 }}
+      >
+        <div className="inspector-pane" key={tab} ref={paneInnerRef}>
         {tab === 'stats' && (
           <>
             {/* The artboard, windowed to the chosen device. The image keeps its own aspect
@@ -575,7 +584,8 @@ export function RightNav({
             onSelect={onSelectScreen}
           />
         )}
-      </div>
+        </div>
+      </motion.div>
     </div>
   )
 }

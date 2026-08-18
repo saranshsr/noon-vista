@@ -314,6 +314,11 @@ type InspectorTab = 'stats' | 'navigateTo' | 'reachedFrom'
  * When the parent is unbounded (e.g. the gallery) the panel hugs its content.
  */
 type RightNavProps = {
+  /** True while the numbers are synthetic — renders the SIMULATED badge. Every
+      MetricSet has carried `mocked: true` since the metrics layer landed; this is
+      the first surface to say it out loud. It must be impossible to screenshot
+      this panel into a deck without the word coming along. */
+  simulated?: boolean
   /** forwarded to the preview — hover a section block (null on leave) */
   onHoverSection?: (info: HoveredSection | null) => void
   /** title + preview image of the artboard currently in focus on the canvas */
@@ -386,6 +391,7 @@ export function RightNav({
   onSelectScreen,
   screenId,
   onClose,
+  simulated = false,
 }: RightNavProps) {
   const [tab, setTab] = useState<InspectorTab>('stats')
   /** Which device viewport the preview is windowed to. 0 is the artboard's own size. */
@@ -498,7 +504,16 @@ export function RightNav({
         </div>
 
         {/* The first-fold guarantee. */}
-        {tab === 'stats' && <PrimaryStats stats={primary} />}
+        {tab === 'stats' && (
+          <>
+            {simulated && (
+              <span className="pixel-line rightnav__simulated" title="These numbers are synthetic — the analytics backend isn't wired in yet.">
+                SIMULATED DATA
+              </span>
+            )}
+            <PrimaryStats stats={primary} />
+          </>
+        )}
 
         {/* Tab strip (Figma 54:80782) — one SegmentedControl, not a hand-rolled dupe. */}
         <SegmentedControl

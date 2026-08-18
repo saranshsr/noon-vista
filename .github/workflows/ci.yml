@@ -1,0 +1,18 @@
+# The guardrail behind push-to-deploy: every push to main goes straight to the
+# team's tool via Vercel, so nothing may land that doesn't typecheck and build.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build # tsc -b && vite build

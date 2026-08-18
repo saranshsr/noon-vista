@@ -1110,6 +1110,7 @@ export default function Dashboard() {
             ) : (
               focused && (
                 <RightNav
+                  simulated={!!screenMetrics?.mocked}
                   title={focused.label}
                   screenId={focused.id}
                   src={focused.previewUrl ?? focused.imageUrl}

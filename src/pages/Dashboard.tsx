@@ -545,6 +545,15 @@ export default function Dashboard() {
     [section],
   )
   const { data: sectionMetrics } = useMetricSet(sectionScope)
+  /**
+   * The card must not blink while scrolling across bands: a cold-cache section
+   * resolves its metrics async, and unmounting the card for those frames read as
+   * flicker. While a band is hovered, the card shows the freshest metrics it has —
+   * the reels roll the moment the real numbers land.
+   */
+  const lastSectionMetrics = useRef<MetricSet | null>(null)
+  if (sectionMetrics) lastSectionMetrics.current = sectionMetrics
+  const sectionMetricsShown = sectionMetrics ?? lastSectionMetrics.current
   const hoveredSection = useMemo(
     () => focusedSections.find((s) => s.id === section?.sectionId) ?? null,
     [focusedSections, section],
@@ -1135,20 +1144,30 @@ export default function Dashboard() {
           </div>
         )}
 
-        {mode === 'map' && hoveredSection && sectionMetrics && !selectedEdge && (
+        {mode === 'map' && hoveredSection && sectionMetricsShown && !selectedEdge && (
           <>
-            <div
+            {/* Springs on `top`, tight enough to read as tracking rather than chasing.
+                The card is glass — layout properties, never transform. */}
+            <motion.div
               className="dashboard__connector"
-              style={{ top: connectorY, left: cardRightX, width: connectorWidth }}
+              initial={false}
+              animate={{ top: connectorY, width: connectorWidth }}
+              transition={{ type: 'spring', visualDuration: 0.16, bounce: 0 }}
+              style={{ left: cardRightX }}
             />
-            <div className="dashboard__section-stats" style={{ top: statsTop }}>
+            <motion.div
+              className="dashboard__section-stats"
+              initial={false}
+              animate={{ top: statsTop }}
+              transition={{ type: 'spring', visualDuration: 0.16, bounce: 0 }}
+            >
               <StatsBar
                 animate
                 title={hoveredSection.name}
-                primary={toStatRows(sectionMetrics, 'primary')}
-                secondary={toStatRows(sectionMetrics, 'secondary')}
+                primary={toStatRows(sectionMetricsShown, 'primary')}
+                secondary={toStatRows(sectionMetricsShown, 'secondary')}
               />
-            </div>
+            </motion.div>
           </>
         )}
 

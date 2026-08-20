@@ -74,8 +74,10 @@ function PrimaryStats({ stats }: { stats: Stat[] }) {
 }
 
 /**
- * Detail rows. No reels: seven simultaneously-animating values is noise, and these
- * are read rather than watched.
+ * Detail rows. Reels roll ONLY on change: mounting a pane keeps every row still
+ * (RollDigit animates nothing on mount), so the old "seven simultaneously-animating
+ * values" objection no longer applies — what rolls is exactly what changed, which
+ * is the point: switching screens shows which numbers moved.
  */
 function SecondaryStats({ stats }: { stats: Stat[] }) {
   if (stats.length === 0) return null
@@ -93,7 +95,9 @@ function SecondaryStats({ stats }: { stats: Stat[] }) {
           transition={{ duration: 0.22, ease: 'easeOut', delay: i * 0.025 }}
         >
           <span className="pixel-line inspector__row-label">{s.label}</span>
-          <span className="pixel inspector__row-value">{s.value}</span>
+          <span className="pixel inspector__row-value">
+            <RollingNumber value={s.value} />
+          </span>
         </motion.div>
       ))}
     </div>

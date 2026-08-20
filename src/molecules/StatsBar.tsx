@@ -1,3 +1,4 @@
+import { RollingNumber } from '../components/RollingNumber'
 type Stat = { label: string; value: string }
 
 type StatsBarProps = {
@@ -35,8 +36,12 @@ function StatRow({ label, value, color }: { label: string; value: string; color:
           {label}
         </span>
       </div>
+      {/* Reels, not text: hovering across sections swaps every value at once, and a
+          hard swap reads as a repaint. Rolling digits make the change legible — you
+          SEE which numbers moved. Mount stays silent (RollDigit only animates on
+          change), so the card's entrance doesn't spin seven reels at once. */}
       <span className="pixel" style={{ fontSize: 14, lineHeight: 1, color: '#FFFFFF' }}>
-        {value}
+        <RollingNumber value={value} />
       </span>
     </div>
   )

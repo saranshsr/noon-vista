@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Section } from '../domain/types'
 
+/** `top` is the vertical CENTRE of the band's visible slice, in viewport px. */
 export type HoveredSection = { sectionId: string; top: number; left: number }
 
 type MasterImageProps = {
@@ -74,7 +75,19 @@ export function MasterImage({
       return
     }
     const r = band.getBoundingClientRect()
-    emit({ sectionId: band.dataset.sectionId as string, top: r.top, left: r.left })
+    // Anchor on the VISIBLE slice of the band, not its full extent. A tall widget
+    // half-scrolled out of the preview reports a rect that reaches past the
+    // viewport — pointing the leader line at its geometric top means pointing at a
+    // clipped, invisible spot. The stats describe what you can see; the anchor
+    // sits in the middle of exactly that.
+    const hostRect = host.getBoundingClientRect()
+    const visibleTop = Math.max(r.top, hostRect.top)
+    const visibleBottom = Math.min(r.bottom, hostRect.bottom)
+    emit({
+      sectionId: band.dataset.sectionId as string,
+      top: (visibleTop + Math.max(visibleTop, visibleBottom)) / 2,
+      left: r.left,
+    })
   }
   const schedule = () => {
     if (!raf.current) raf.current = requestAnimationFrame(report)

@@ -2937,10 +2937,14 @@ kbd {
 
 .edge-card__accent {
   position: absolute;
-  left: 0;
+  /* Flush with the CARD's edge, not the title's. The title-wrap is the positioning
+     context (it owns the vertical centring), so the body's 20px horizontal padding
+     is walked back to land the tick exactly on the container boundary — an edge
+     marker, not an indent. */
+  left: -20px;
   top: 50%;
   transform: translateY(-50%);
-  width: 1px;
+  width: 2px;
   height: 24px;
   background: #F7306F;
 }

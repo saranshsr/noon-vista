@@ -657,9 +657,17 @@ export default function Dashboard() {
   // same and the conversion is gone rather than left as a divide by 1.
   const spaceW = vw
   const spaceH = vh
-  const statsTop = section ? clamp(section.top, 72, spaceH - 360) : 0
+  /**
+   * The card and the arm are DECOUPLED. Both used to derive from one clamped value,
+   * so the moment the card hit its screen-edge clamp the arm froze with it, pointing
+   * at nothing while the hovered band kept moving. Now the arm tracks the band's
+   * visible centre (`section.top`, live from the hit-test) the whole way; the card
+   * follows until its clamp and then holds, and the arm is only softly clamped to
+   * the card's own vertical span so it always visibly docks into the card's edge.
+   */
+  const statsTop = section ? clamp(section.top - 32, 72, spaceH - 360) : 0
   const cardRightX = spaceW - SECTION_CARD_INSET
-  const connectorY = statsTop + 32
+  const connectorY = section ? clamp(section.top, statsTop + 16, statsTop + 340) : 0
   const connectorWidth = section ? Math.max(0, section.left - cardRightX) : 0
 
   const hasGraph = !!snapshot && snapshot.screens.length > 0

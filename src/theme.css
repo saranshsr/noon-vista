@@ -1,0 +1,138 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   Theme system — CSS custom properties, class-toggled, no JS required
+   ══════════════════════════════════════════════════════════════════════════════
+
+   THREE LAYERS, top to bottom:
+
+   1. FOUNDATION (`--base-*`) — raw, theme-independent primitives: the brand hue
+      and the two ink colours. Never referenced by components; only semantic
+      tokens may read them.
+
+   2. SEMANTIC (`--color-*`) — what a colour MEANS, not what it is. This is the
+      only layer a theme overrides, and the only layer new CSS should consume.
+      Dark is the app's native theme and lives on bare `:root`, which is what
+      makes the initial load JS-free: no class, no script, no flash — the
+      default theme is simply the stylesheet.
+
+   3. LEGACY ALIASES — the pre-existing tokens (`--text-1`, `--surface-2`,
+      `--tool-fill`…) are re-pointed at semantic tokens in index.css, so the
+      ~4000 lines already consuming them theme for free. Hardcoded literals in
+      old CSS migrate to semantic tokens opportunistically, as files get
+      touched.
+
+   ADDING A THEME is one block, zero refactors:
+
+       html.theme-<name> { --color-bg-canvas: …; --color-text-primary: …; }
+
+   Override every semantic token (the full contract is the `:root` list below);
+   omitting one means inheriting dark's value, which is almost never what a
+   light-family theme wants. Toggling = adding the class to <html> — statically
+   in index.html, from a server, or from a one-line script; the SYSTEM needs no
+   JS, only the *persistence* of a user's choice does.
+
+   CONTRAST CONTRACT (WCAG 2.1 AA, verified computationally — every value below
+   was checked with the relative-luminance formula before landing; re-run the
+   check when touching any of these):
+
+       text-primary / secondary / tertiary  ≥ 4.5:1  on canvas AND surface
+       text-faint                           ≥ 3:1    — disabled & decorative
+                                                       ONLY, never body text
+       accent-text                          ≥ 4.5:1  on canvas AND surface
+       text-on-accent                       ≥ 3:1    — large/bold text and UI
+                                                       glyphs on accent fills
+
+   Measured: dark 19.7 / 12.5 / 5.3 / 3.8 / 5.25 / 3.75 — light 16.4 / 8.4 /
+   4.6 / 3.1 / 4.8 / 5.3. Note `--color-accent` (the raw brand pink) fails AA
+   as text on light backgrounds — that is WHY `--color-accent-text` exists as a
+   separate token. Brand pink for graphics, accent-text for words.
+
+   HONEST SCOPE NOTE: the world-space canvas (grid plusses, connector strokes,
+   board shadows) draws its colours in JS/SVG literals — GridCanvas.tsx,
+   AtlasConnectors.tsx, boardGeometry.ts — and does not read these tokens yet.
+   A light theme today themes the CHROME correctly and leaves the plane dark,
+   which reads as deliberate (dark canvas, light panels) but is not a themed
+   canvas. Wiring the canvas to read tokens at draw time is the follow-up. */
+
+:root {
+  /* ── 1. Foundation ──────────────────────────────────────────────────────── */
+  --base-brand: #f7306f;        /* noon pink — identity, never overridden */
+  --base-brand-deep: #d31257;   /* AA-safe pink for text on light grounds */
+  --base-ink-light: #ffffff;    /* light ink (text on dark) */
+  --base-ink-dark: #17171a;     /* dark ink (text on light) */
+
+  /* ── 2. Semantic — DARK (native default, zero-JS) ───────────────────────── */
+  color-scheme: dark;
+
+  /* Grounds */
+  --color-bg-canvas: #0b0b0d;
+  --color-bg-surface: #141417;
+  --color-bg-surface-solid: #0a0a0a;
+  --color-bg-glass: rgba(10, 10, 12, 0.58);
+  --color-bg-scrim: rgba(0, 0, 0, 0.6);
+
+  /* Raised fills — ink at low alpha over the ground */
+  --color-bg-raised-1: rgba(255, 255, 255, 0.02);
+  --color-bg-raised-2: rgba(255, 255, 255, 0.04);
+  --color-bg-raised-3: rgba(255, 255, 255, 0.08);
+
+  /* Text — the AA ladder. faint is disabled/decorative ONLY (3:1). */
+  --color-text-primary: var(--base-ink-light);
+  --color-text-secondary: rgba(255, 255, 255, 0.8);
+  --color-text-tertiary: rgba(255, 255, 255, 0.5);
+  --color-text-faint: rgba(255, 255, 255, 0.4);
+  --color-text-on-accent: #ffffff;
+
+  /* Borders */
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-default: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-border-glass: rgba(255, 255, 255, 0.08);
+
+  /* Accent — brand for graphics, accent-text for words (see contract above) */
+  --color-accent: var(--base-brand);
+  --color-accent-text: var(--base-brand);
+  --color-accent-muted-40: rgba(247, 48, 111, 0.4);
+  --color-accent-muted-20: rgba(247, 48, 111, 0.2);
+  --color-accent-muted-10: rgba(247, 48, 111, 0.1);
+
+  /* Status */
+  --color-positive: #26b57c;
+  --color-warning: #ffa852;
+  --color-danger: #ff5a5a;
+}
+
+/* ── 2. Semantic — LIGHT (root-class toggle) ──────────────────────────────── */
+html.theme-light {
+  color-scheme: light;
+
+  --color-bg-canvas: #f5f5f7;
+  --color-bg-surface: #ffffff;
+  --color-bg-surface-solid: #ffffff;
+  --color-bg-glass: rgba(252, 252, 253, 0.66);
+  --color-bg-scrim: rgba(23, 23, 26, 0.35);
+
+  --color-bg-raised-1: rgba(23, 23, 26, 0.03);
+  --color-bg-raised-2: rgba(23, 23, 26, 0.05);
+  --color-bg-raised-3: rgba(23, 23, 26, 0.09);
+
+  --color-text-primary: var(--base-ink-dark);
+  --color-text-secondary: rgba(23, 23, 26, 0.78);
+  --color-text-tertiary: rgba(23, 23, 26, 0.6);
+  --color-text-faint: rgba(23, 23, 26, 0.48);
+  --color-text-on-accent: #ffffff;
+
+  --color-border-subtle: rgba(23, 23, 26, 0.08);
+  --color-border-default: rgba(23, 23, 26, 0.11);
+  --color-border-strong: rgba(23, 23, 26, 0.16);
+  --color-border-glass: rgba(23, 23, 26, 0.12);
+
+  --color-accent: var(--base-brand);
+  --color-accent-text: var(--base-brand-deep);
+  --color-accent-muted-40: rgba(211, 18, 87, 0.4);
+  --color-accent-muted-20: rgba(211, 18, 87, 0.2);
+  --color-accent-muted-10: rgba(211, 18, 87, 0.1);
+
+  --color-positive: #17835a;
+  --color-warning: #a05716;
+  --color-danger: #c22f2f;
+}

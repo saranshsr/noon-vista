@@ -1,5 +1,6 @@
 import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
+import './theme.css'
 import './index.css'
 import App from './App.tsx'
 

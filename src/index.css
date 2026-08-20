@@ -13,38 +13,38 @@
 }
 
 :root {
-  --atlas-bg: #0b0b0d;
+  --atlas-bg: var(--color-bg-canvas);
 
-  /* ── Design tokens ──────────────────────────────────────────────────────
-     These values are currently re-typed as inline literals across ~15
-     components. Defining them here is step one; components adopt them as they
-     get touched. Deliberately NOT doing a wholesale inline-style → Tailwind
-     migration — a 30-file restyle buys nothing a viewer can see. */
+  /* ── Design tokens (LEGACY ALIASES) ─────────────────────────────────────
+     These names predate the theme system and are consumed across ~4000 lines;
+     they now alias the semantic tokens in theme.css, which is what makes that
+     entire surface theme for free. New CSS consumes --color-* directly; these
+     aliases are frozen — add semantic tokens, not legacy ones. */
 
   /* noon pink, and the opacities the design actually uses it at */
-  --noon-pink: #f7306f;
-  --noon-pink-40: rgba(247, 48, 111, 0.4);
-  --noon-pink-20: rgba(247, 48, 111, 0.2);
-  --noon-pink-10: rgba(247, 48, 111, 0.1);
+  --noon-pink: var(--color-accent);
+  --noon-pink-40: var(--color-accent-muted-40);
+  --noon-pink-20: var(--color-accent-muted-20);
+  --noon-pink-10: var(--color-accent-muted-10);
 
   /* Raised surfaces — white at low alpha over the black plane. */
-  --surface-1: rgba(255, 255, 255, 0.02);
-  --surface-2: rgba(255, 255, 255, 0.04);
-  --surface-3: rgba(255, 255, 255, 0.08);
+  --surface-1: var(--color-bg-raised-1);
+  --surface-2: var(--color-bg-raised-2);
+  --surface-3: var(--color-bg-raised-3);
   /* The panel fill. Everything added from here on uses this flat surface rather
      than a blurred one — same value the Sidebar has always used. */
-  --panel-solid: #0a0a0a;
+  --panel-solid: var(--color-bg-surface-solid);
 
   /* Hairlines */
-  --hairline-1: rgba(255, 255, 255, 0.06);
-  --hairline-2: rgba(255, 255, 255, 0.08);
-  --hairline-3: rgba(255, 255, 255, 0.12);
+  --hairline-1: var(--color-border-subtle);
+  --hairline-2: var(--color-border-default);
+  --hairline-3: var(--color-border-strong);
 
   /* Text */
-  --text-1: #ffffff;
-  --text-2: rgba(255, 255, 255, 0.8);
-  --text-3: rgba(255, 255, 255, 0.5);
-  --text-4: rgba(255, 255, 255, 0.4);
+  --text-1: var(--color-text-primary);
+  --text-2: var(--color-text-secondary);
+  --text-3: var(--color-text-tertiary);
+  --text-4: var(--color-text-faint);
 
   /* Radii */
   --radius-sm: 8px;
@@ -65,9 +65,9 @@
      three together, which is what makes the app feel like one toolkit. */
   /* Tint low enough that the blur is actually perceptible — at 82% the glass was
      opaque enough that a working blur would still have looked like a flat panel. */
-  --tool-fill: rgba(10, 10, 12, 0.58);
+  --tool-fill: var(--color-bg-glass);
   --tool-blur: 22px;
-  --tool-border: rgba(255, 255, 255, 0.1);
+  --tool-border: var(--color-border-glass);
   --tool-radius: 12px;
   /* Inner control size — tool buttons, segment heights, row heights. */
   --control-h: 30px;

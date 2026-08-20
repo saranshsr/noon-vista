@@ -31,7 +31,7 @@ import type { ShortcutId } from '../hooks/shortcuts'
 import { useBootProgress } from '../state/useBootProgress'
 import { useViewPrefs } from '../state/useViewPrefs'
 import { ScreensView } from './ScreensView'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 
 /**
  * noon Atlas — main landing page (Figma node 54:65001).
@@ -156,6 +156,41 @@ export default function Dashboard() {
   // Exit animation is AnimatePresence's job now (see the sidenav render).
   const closeNav = useCallback(() => setNavOpen(false), [])
   const [section, setSection] = useState<HoveredSection | null>(null)
+  /**
+   * Position flows through MotionValues; React state carries only the band's
+   * IDENTITY. The previous wiring pushed every hover/scroll frame through
+   * setState → a full re-render of this (large) component → a Motion spring
+   * re-targeted mid-flight — two frames of latency plus 60Hz render work, which
+   * is exactly the lag and jitter it produced. MotionValues bypass React
+   * entirely: the hit-test writes the anchor, one native spring follows it, and
+   * the card/arm positions are pure per-frame transforms of that spring.
+   */
+  const sectionAnchor = useMotionValue(0)
+  const sectionArmLeft = useMotionValue(0)
+  const anchorSpring = useSpring(sectionAnchor, { stiffness: 520, damping: 44 })
+  const sectionRef = useRef<HoveredSection | null>(null)
+  const handleHoverSection = useCallback(
+    (info: HoveredSection | null) => {
+      if (info) {
+        // First hover after a gap teleports the values — the card must appear AT
+        // the band, not fly in from wherever it last was.
+        if (!sectionRef.current) {
+          sectionAnchor.jump(info.top)
+          anchorSpring.jump(info.top)
+        } else {
+          sectionAnchor.set(info.top)
+        }
+        sectionArmLeft.set(info.left)
+      }
+      // Re-render ONLY when the hovered band actually changes.
+      const prev = sectionRef.current
+      const same =
+        (prev === null && info === null) || (prev !== null && info !== null && prev.sectionId === info.sectionId)
+      sectionRef.current = info
+      if (!same) setSection(info)
+    },
+    [sectionAnchor, anchorSpring, sectionArmLeft],
+  )
   const [focusedId, setFocusedId] = useState<ScreenId | null>(null)
   const [focusNonce, setFocusNonce] = useState(0)
   const [selectedFlowId, setSelectedFlowId] = useState<FlowId | null>(null)
@@ -658,17 +693,21 @@ export default function Dashboard() {
   const spaceW = vw
   const spaceH = vh
   /**
-   * The card and the arm are DECOUPLED. Both used to derive from one clamped value,
-   * so the moment the card hit its screen-edge clamp the arm froze with it, pointing
-   * at nothing while the hovered band kept moving. Now the arm tracks the band's
-   * visible centre (`section.top`, live from the hit-test) the whole way; the card
-   * follows until its clamp and then holds, and the arm is only softly clamped to
-   * the card's own vertical span so it always visibly docks into the card's edge.
+   * The card and the arm are DECOUPLED, and both derive per-frame from ONE spring.
+   * The arm tracks the band's visible centre the whole way; the card follows until
+   * its screen-edge clamp and then holds; the arm is softly clamped to the card's
+   * own vertical span so it always visibly docks into the card's edge. Deriving
+   * both from the same sprung anchor (rather than springing each separately) is
+   * what keeps them in lockstep — two independent springs drift a frame apart and
+   * the arm visibly detaches from the card mid-move.
    */
-  const statsTop = section ? clamp(section.top - 32, 72, spaceH - 360) : 0
   const cardRightX = spaceW - SECTION_CARD_INSET
-  const connectorY = section ? clamp(section.top, statsTop + 16, statsTop + 340) : 0
-  const connectorWidth = section ? Math.max(0, section.left - cardRightX) : 0
+  const statsTopMV = useTransform(anchorSpring, (v) => clamp(v - 32, 72, spaceH - 360))
+  const connectorYMV = useTransform(anchorSpring, (v) => {
+    const top = clamp(v - 32, 72, spaceH - 360)
+    return clamp(v, top + 16, top + 340)
+  })
+  const connectorWidthMV = useTransform(sectionArmLeft, (l) => Math.max(0, l - cardRightX))
 
   const hasGraph = !!snapshot && snapshot.screens.length > 0
   const canvasReady = status === 'ready' && hasGraph && !!focused
@@ -1143,7 +1182,7 @@ export default function Dashboard() {
                   editing={renamingId === focused.id}
                   onEditingChange={(next) => setRenamingId(next ? focused.id : null)}
                   onSelectScreen={focusScreen}
-                  onHoverSection={setSection}
+                  onHoverSection={handleHoverSection}
                   onClose={() => setRightNavOpen(false)}
                 />
               )
@@ -1154,21 +1193,14 @@ export default function Dashboard() {
 
         {mode === 'map' && hoveredSection && sectionMetricsShown && !selectedEdge && (
           <>
-            {/* Springs on `top`, tight enough to read as tracking rather than chasing.
-                The card is glass — layout properties, never transform. */}
+            {/* MotionValue-driven: position updates never re-render React and never
+                re-target an in-flight tween — the spring follows natively. Layout
+                properties only; the card is glass. */}
             <motion.div
               className="dashboard__connector"
-              initial={false}
-              animate={{ top: connectorY, width: connectorWidth }}
-              transition={{ type: 'spring', visualDuration: 0.16, bounce: 0 }}
-              style={{ left: cardRightX }}
+              style={{ left: cardRightX, top: connectorYMV, width: connectorWidthMV }}
             />
-            <motion.div
-              className="dashboard__section-stats"
-              initial={false}
-              animate={{ top: statsTop }}
-              transition={{ type: 'spring', visualDuration: 0.16, bounce: 0 }}
-            >
+            <motion.div className="dashboard__section-stats" style={{ top: statsTopMV }}>
               <StatsBar
                 animate
                 title={hoveredSection.name}

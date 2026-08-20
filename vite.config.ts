@@ -19,6 +19,13 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 6100
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    // es2022 for top-level await: the Supabase adapter loads behind `await import`
+    // so its ~330KB chunk is fetched only when that backend is configured. Vite's
+    // default (es2020/chrome87) predates TLA; every browser this tool supports is
+    // years past it.
+    target: 'es2022',
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

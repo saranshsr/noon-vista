@@ -9,21 +9,31 @@
 import type { AtlasRepository } from './AtlasRepository'
 import type { MetricsRepository } from './MetricsRepository'
 import { LocalAtlasRepository } from './local/LocalAtlasRepository'
-import { SupabaseAtlasRepository } from './supabase/SupabaseAtlasRepository'
 import { MockMetricsRepository } from './mock/MockMetricsRepository'
 
 type Backend = 'local' | 'supabase' | 'http'
 
 const backend = (import.meta.env.VITE_ATLAS_BACKEND as Backend | undefined) ?? 'local'
 
-function createAtlasRepo(): AtlasRepository {
+/**
+ * The Supabase adapter (and the ~330KB of @supabase/supabase-js under it) loads
+ * via dynamic import behind a top-level await: the split chunk is FETCHED only
+ * when the backend is actually configured. Statically imported, it sat in the
+ * main bundle for every visitor of the default local build — 719KB → 395KB min
+ * by moving it. Top-level await means importers still see a plain synchronous
+ * `atlasRepo`; the module graph just resolves the extra chunk first when (and
+ * only when) it's needed.
+ */
+async function createAtlasRepo(): Promise<AtlasRepository> {
   switch (backend) {
-    case 'supabase':
+    case 'supabase': {
       // Throws at construction if the URL/key env vars are missing — a hard
       // failure rather than a silent fallback to local, because "why aren't my
       // changes shared?" is a much worse afternoon than "the env var is unset".
       // Setup: supabase/SETUP.md.
+      const { SupabaseAtlasRepository } = await import('./supabase/SupabaseAtlasRepository')
       return new SupabaseAtlasRepository()
+    }
     case 'http':
       throw new Error(
         'VITE_ATLAS_BACKEND=http is not implemented — use `supabase`, or `local` (default)',
@@ -34,7 +44,7 @@ function createAtlasRepo(): AtlasRepository {
   }
 }
 
-export const atlasRepo: AtlasRepository = createAtlasRepo()
+export const atlasRepo: AtlasRepository = await createAtlasRepo()
 
 export const metricsRepo: MetricsRepository = new MockMetricsRepository()
 

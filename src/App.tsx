@@ -1,6 +1,10 @@
+import { lazy, Suspense } from 'react'
 import { MotionConfig } from 'motion/react'
 import Dashboard from './pages/Dashboard'
-import Gallery from './pages/Gallery'
+
+// The Gallery is a dev surface behind ?view=gallery; almost no visitor ever
+// loads it, so it must not cost the ones who don't anything.
+const Gallery = lazy(() => import('./pages/Gallery'))
 import { ErrorBoundary } from './components'
 import { AtlasProvider } from './state/AtlasProvider'
 import { SEEDED_PROJECT_ID } from './data/seed/noonAtlasSeed'
@@ -23,7 +27,9 @@ export default function App() {
   if (view === 'gallery') {
     return (
       <ErrorBoundary>
-        <Gallery />
+        <Suspense fallback={null}>
+          <Gallery />
+        </Suspense>
       </ErrorBoundary>
     )
   }

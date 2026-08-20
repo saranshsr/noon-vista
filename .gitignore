@@ -10,3 +10,7 @@ node_modules/.tmp
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Local agent tooling — machine-specific, never shipped
+.agents/
+.claude/skills
